@@ -71,6 +71,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 @Composable
 fun AddEditReminderScreen(
     reminderId: Long = -1L,
+    shakeDraftId: String? = null,
     navigateBack: () -> Unit,
     onNavigateUp: () -> Unit,
     viewModel: AddEditViewModel = viewModel(factory = AppViewModelProvider.Factory)
@@ -108,7 +109,7 @@ fun AddEditReminderScreen(
         if (reminderId != -1L) {
             viewModel.loadReminder(reminderId)
         } else {
-            viewModel.applyDefaultsForNewReminder()
+            viewModel.applyDefaultsForNewReminder(shakeDraftId)
         }
     }
     
@@ -136,6 +137,7 @@ fun AddEditReminderScreen(
         val messageRes = when (issue) {
             RecordingIssue.TOO_SHORT -> R.string.ae_record_too_short
             RecordingIssue.CAPTURE_FAILED -> R.string.ae_record_failed
+            RecordingIssue.IMPORT_FAILED -> R.string.shake_import_failed
             RecordingIssue.SILENT -> R.string.ae_record_silent
             null -> null
         }
@@ -209,6 +211,11 @@ fun AddEditReminderScreen(
                 }
             }
         )
+    }
+
+    if (uiState.isImporting) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
     }
 
     Scaffold(

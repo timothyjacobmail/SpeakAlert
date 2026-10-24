@@ -198,6 +198,16 @@ fun SettingsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(stringResource(R.string.shake_title), style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = {
+                        context.startActivity(Intent(context, com.ghostgramlabs.speakalert.shake.ShakeRecordingsActivity::class.java))
+                    }) {
+                        Text(stringResource(R.string.shake_open))
+                    }
+                }
+            }
             // ============================================================
             // SECTION 0: APPEARANCE
             // ============================================================

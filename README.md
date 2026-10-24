@@ -42,6 +42,9 @@ hear it even when the phone is in your pocket or across the room.
   tone-only mode, optional Do Not Disturb bypass, and battery-optimisation guidance for
   restrictive phones.
 - **Private playback.** Play reminders through the earpiece or Bluetooth headphones.
+- **Shake to record.** Enable listening in Settings, then shake firmly twice to record even
+  while locked. Distinct sounds confirm starting and stopping. Configure single, double and
+  triple gesture actions, edit the reminder time by shaking, and check the recent action log.
 - **Widgets and Wear OS.** A quick-add widget, an upcoming-reminders widget, and alerts on
   Wear OS watches.
 - **Backup and restore.** Exports every reminder, voice recordings included.
@@ -49,6 +52,63 @@ hear it even when the phone is in your pocket or across the room.
   Bengali, Telugu, Tamil, Greek and Malayalam, with right-to-left layout support.
 - **Fully offline.** No account, no analytics, no network calls for reminders. Data stays on
   the device.
+
+## Shake recording
+
+Open **Settings > Shake to record > Open recordings and controls**, grant microphone and
+notification access, then tap **Enable listening** before locking the phone. One gesture is
+two firm movements within 1.2 seconds. Repeat the complete gesture to make a double or triple;
+an action runs after the grouping pause (1.4 seconds by default), so a double does not also
+run the single action. Four or more gestures in one group are ignored.
+
+The default assignments are:
+
+| When | Single gesture | Double gesture | Triple gesture |
+| --- | --- | --- | --- |
+| Ready | Start recording | Nothing | Nothing |
+| Recording | Stop recording | Nothing | Nothing |
+| Within 10 seconds after stopping | Enter time editing | Nothing | Finish and schedule |
+| Minutes mode | Add 5 minutes | Switch to Hours mode | Finish and schedule |
+| Hours mode | Add 30 minutes | Switch to Minutes mode | Finish and schedule |
+
+The initial time is five minutes after recording stops. Switching modes does not add time.
+Pause for 10 seconds to finish automatically, or use **Finish and schedule reminder**.
+The completed audio is saved immediately; the reminder is inserted and scheduled once the
+entry/edit window ends. **Stop listening** also finishes the pending reminder immediately.
+The screen and ongoing notification show the mode, step and due time during editing.
+The notification updates silently as gestures are recognized, recording starts/stops, modes
+change and the reminder is saved. It shows the last action and final due time without making
+a notification sound or vibration. Recording/edit feedback remains separately configurable.
+
+Open **Customize shake actions** to change all assignments, the default delay, both increments,
+entry/idle windows, gesture grouping, cooldown, force threshold, sounds and vibration. Changes
+apply when listening is enabled again. Add, subtract, reset, switch and finish can be assigned
+independently in each editing mode. Subtraction keeps at least one minute in the future;
+additions are capped at seven days. If editing outlasts the due time, finishing schedules it
+at least five seconds ahead. **Recent shake actions** keeps the last 30 recognized groups and
+saves in memory for checking your settings; it contains no audio and can be cleared.
+
+A short beep and vibration confirm starting; a different sound and longer vibration confirm
+stopping. While editing, a short cue indicates Minutes mode and a double cue indicates Hours
+mode. Sounds follow notification volume and silent-mode settings. Each take is limited to
+five minutes. Tap **View reminder** or the updated notification after scheduling to preview
+it or change its time. Your default follow-up setting also applies.
+
+Listening stays active only for the current service session. Enable it again after a restart,
+force-stop, or system termination. Wake-up accelerometers are preferred; other devices need
+a partial wake lock while listening, which increases battery use. Device battery restrictions
+can still interrupt listening. If automatic reminder creation fails, the completed take stays
+in the inbox for recovery, alongside older unassigned recordings. Canceling a recovery edit
+keeps the original. If the reminder is saved but scheduling fails, open that reminder to set
+its time again. An abrupt process termination during capture can leave an incomplete take,
+which is not shown in the inbox. If the process is killed during time editing, the completed
+recording remains in the recovery inbox; an unfinished time selection is not restored.
+
+The suggested [d3xvn/shake](https://github.com/d3xvn/shake) package targets Flutter. SpeakAlert
+uses an independent Kotlin accelerometer detector with threshold, peak spacing and cooldown
+instead of introducing a Flutter runtime. See [Android microphone foreground-service
+restrictions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)
+for why listening must first be enabled while the app is visible.
 
 ## Building
 
@@ -63,6 +123,10 @@ git clone https://github.com/ghostgramlabs/SpeakAlert.git
 cd SpeakAlert
 ./gradlew assembleDebug          # Windows: gradlew.bat assembleDebug
 ```
+
+Debug builds use the app ID `com.ghostgramlabs.speakalert.debug` and launcher name
+**SpeakAlert Debug**, so they install alongside the release app with separate data and
+permissions. Existing reminders remain in the release app.
 
 The debug APK lands in `app/build/outputs/apk/debug/`. Install it on a device or emulator
 running Android 8.0 (API 26) or later:

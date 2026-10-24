@@ -5,6 +5,16 @@ User-facing changes to SpeakAlert, newest first. Version numbers match the Googl
 
 ## Unreleased
 
+- Shake listening now updates one explicitly silent status notification with gesture recognition,
+  the current mode/action, recording progress, saving status and the scheduled due time.
+- Customizable single/double/triple shake actions for recording and time editing, with separate
+  Minutes/Hours increments, adjustable sensitivity and timing windows, feedback switches and
+  a recent action log. By default, shake after stopping to edit, add 5 minutes per gesture,
+  double-shake to switch to 30-minute steps, and triple-shake or pause to finish scheduling.
+- Optional shake-to-record listening works while locked, with vibration feedback, notification
+  controls, and an inbox for turning saved recordings into reminders.
+- Shake recording now plays distinct start/stop sounds and automatically creates a reminder
+  due five minutes after recording stops. Failed saves keep the recording available for recovery.
 - SpeakAlert is now open source under the Apache License 2.0.
 
 ## 2.0.40 - 2026-10-06

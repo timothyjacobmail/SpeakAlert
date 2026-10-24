@@ -67,6 +67,16 @@ class AndroidAudioRecorder(
 
     override fun start(outputFile: File, useExperimentalBehavior: Boolean) {
         check(recorder == null) { "A recording is already in progress" }
+        RecordingOwner.acquire(this)
+        try {
+            startOwned(outputFile, useExperimentalBehavior)
+        } catch (failure: Throwable) {
+            RecordingOwner.release(this)
+            throw failure
+        }
+    }
+
+    private fun startOwned(outputFile: File, useExperimentalBehavior: Boolean) {
         outputFile.parentFile?.mkdirs()
         peakAmplitude = 0
         this.useExperimentalBehavior = useExperimentalBehavior
@@ -149,9 +159,13 @@ class AndroidAudioRecorder(
             val size = file?.length() ?: 0L
             return RecordingOutcome(file = file, peakAmplitude = peakAmplitude, sizeBytes = size)
         } finally {
-            activeRecorder.releaseSafely()
-            runCatching { legacyOutputStream?.close() }
-            legacyOutputStream = null
+            try {
+                activeRecorder.releaseSafely()
+            } finally {
+                runCatching { legacyOutputStream?.close() }
+                legacyOutputStream = null
+                RecordingOwner.release(this)
+            }
         }
 
         val size = file?.length() ?: 0L

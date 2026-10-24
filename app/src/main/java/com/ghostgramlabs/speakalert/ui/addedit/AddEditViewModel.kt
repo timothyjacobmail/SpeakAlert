@@ -45,6 +45,7 @@ enum class RecordingIssue {
     TOO_SHORT,
     /** The device refused to record at all. */
     CAPTURE_FAILED,
+    IMPORT_FAILED,
     /** A file was written but the microphone delivered nothing for the whole take. */
     SILENT
 }
@@ -54,6 +55,7 @@ data class AddEditUiState(
     val title: String = "",
     val reminderText: String = "",
     val isRecording: Boolean = false,
+    val isImporting: Boolean = false,
     val isPlaying: Boolean = false,
     val recordedAudioPath: String? = null,
     val isCustomAudioFile: Boolean = false,
@@ -114,6 +116,8 @@ class AddEditViewModel(
     private var currentRecordingUsesExperimentalBehavior = false
     private val detachedTempFiles = java.util.Collections.synchronizedSet(mutableSetOf<File>())
     private var savedDraft: ReminderDraft? = null
+    private var importedShakeDraftId: String? = null
+    private var shakeImportAttempted = false
     
     companion object {
         const val MAX_RECORDING_SECONDS = 5 * 60 // 5 minutes
@@ -167,12 +171,40 @@ class AddEditViewModel(
      * Pre-populate fields for a brand-new reminder from user-level defaults.
      * Should be called only when reminderId == -1L. Has no effect on existing reminders.
      */
-    fun applyDefaultsForNewReminder() {
+    fun applyDefaultsForNewReminder(shakeDraftId: String? = null) {
+        // Configuration changes must not replace an edited take with the original again.
+        if (shakeDraftId != null && shakeImportAttempted) return
+        if (shakeDraftId != null) shakeImportAttempted = true
+        if (shakeDraftId != null) _uiState.value = _uiState.value.copy(isImporting = true)
         viewModelScope.launch {
             val defaultFollowUp = settingsRepository.defaultFollowUpMinutes.first()
             // Only apply if state hasn't already been loaded into edit mode
             if (_uiState.value.initialReminderId == -1L) {
                 setSavedDraft(_uiState.value.copy(followUpCheckMinutes = defaultFollowUp))
+                if (shakeDraftId != null) {
+                    val copy = File(tempDir, "temp_${UUID.randomUUID()}.m4a")
+                    try {
+                        withContext(ioDispatcher) {
+                            val original = com.ghostgramlabs.speakalert.shake.ShakeDraftStore(appContext.filesDir)
+                                .find(shakeDraftId) ?: error("Recording no longer exists")
+                            original.copyTo(copy)
+                        }
+                        tempAudioFile = copy
+                        importedShakeDraftId = shakeDraftId
+                        setDraftState(_uiState.value.copy(
+                            recordedAudioPath = copy.absolutePath,
+                            triggerTime = System.currentTimeMillis() + com.ghostgramlabs.speakalert.shake.ShakeReminderCreator.DEFAULT_DELAY_MS
+                        ))
+                    } catch (cancelled: CancellationException) {
+                        copy.delete()
+                        throw cancelled
+                    } catch (_: Exception) {
+                        copy.delete()
+                        _uiState.value = _uiState.value.copy(recordingIssue = RecordingIssue.IMPORT_FAILED)
+                    } finally {
+                        _uiState.value = _uiState.value.copy(isImporting = false)
+                    }
+                }
             }
         }
     }
@@ -212,23 +244,23 @@ class AddEditViewModel(
     }
 
     fun startRecording() {
+        if (_uiState.value.isImporting) return
         if (_uiState.value.isRecording) return
 
         // Stop any playback first
         stopPlayback()
 
-        // A retake gets a new path, so an older background enhancement can finish safely while
-        // its file is removed afterwards. Recording starts immediately and never waits for it.
-        detachAndDeleteTempRecording()
-
         // Record to TEMP file first (not final location)
         val fileName = "temp_${UUID.randomUUID()}.m4a"
         val file = File(tempDir, fileName)
-        tempAudioFile = file
         currentRecordingUsesExperimentalBehavior = experimentalVoiceEnhancementEnabled.value
         
         try {
             recorder.start(file, currentRecordingUsesExperimentalBehavior)
+            // Keep the existing take if the shake service owns the microphone or capture fails.
+            // Only discard it once its replacement has actually started.
+            detachAndDeleteTempRecording()
+            tempAudioFile = file
             setDraftState(_uiState.value.copy(
                 isRecording = true, 
                 recordedAudioPath = null, 
@@ -263,17 +295,11 @@ class AddEditViewModel(
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            if (currentRecordingUsesExperimentalBehavior) {
-                file.delete()
-                tempAudioFile = null
-                _uiState.value = _uiState.value.copy(
-                    isRecording = false,
-                    recordingIssue = RecordingIssue.CAPTURE_FAILED
-                )
-            } else {
-                // Baseline behavior from 300df35: report the ordinary form error only.
-                _uiState.value = _uiState.value.copy(isRecording = false, showError = true)
-            }
+            file.delete()
+            _uiState.value = _uiState.value.copy(
+                isRecording = false,
+                recordingIssue = RecordingIssue.CAPTURE_FAILED
+            )
             currentRecordingUsesExperimentalBehavior = false
         }
     }
@@ -379,6 +405,8 @@ class AddEditViewModel(
      * enhancer able to recreate an abandoned file.
      */
     private fun detachAndDeleteTempRecording() {
+        // Replacing the imported take must not consume the original inbox recording.
+        importedShakeDraftId = null
         val file = tempAudioFile ?: return
         val pendingEnhancement = enhancementJob
         tempAudioFile = null
@@ -537,6 +565,7 @@ class AddEditViewModel(
      * On validation error: sets showError=true, stays on screen
      */
     fun saveReminder() {
+        if (_uiState.value.isImporting) return
         // Saving during a take means "I am done speaking", not "discard this". Finish the
         // recording first so the take becomes the reminder's audio; otherwise the in-progress
         // recording has no path yet and the save fails the audio-or-text check, which reads as
@@ -670,6 +699,15 @@ class AddEditViewModel(
                 // Saving gives the reminder a fresh schedule, so any missed occurrence it had is
                 // settled; left behind, it would keep a one-time reminder hidden under Missed.
                 missedRepository?.deleteMissedReminderByReminderId(id)
+
+                // Keep the inbox original on cancel or failed save; consume it only once the
+                // reminder and schedule exist. Never remove it merely because it was opened.
+                importedShakeDraftId?.let { draftId ->
+                    withContext(ioDispatcher) {
+                        com.ghostgramlabs.speakalert.shake.ShakeDraftStore(appContext.filesDir).delete(draftId)
+                    }
+                    importedShakeDraftId = null
+                }
 
                 if (enhancementPending && sourceAudioFile != null) {
                     finalAudioPath?.let { enhanceSavedRecording(File(it)) }

@@ -143,6 +143,55 @@ Alarms do not survive a reboot. `BootReceiver` handles `BOOT_COMPLETED`, `TIME_C
 
 On Android 15+, the receiver also skips autoplay for the first two minutes after boot.
 
+## Shake recording
+
+`shake/ShakeRecordingService` is a non-exported `microphone` foreground service, explicitly
+started from `ShakeRecordingsActivity` after microphone and notification permission checks.
+The manifest declares `FOREGROUND_SERVICE_MICROPHONE`. It is not started at boot or restarted
+after process death: the microphone's while-in-use grant must come from the visible activity.
+The service uses a wake-up accelerometer if available, otherwise a partial wake lock while
+listening, and always a wake lock during recording, gesture grouping and time editing so
+screen-off deadlines run. Sensor
+listeners, recorder and wake lock are released on shutdown. The ongoing notification offers
+save and stop actions; it opens the ordinary unlocked inbox, without a full-screen intent.
+The status channel disables sound, vibration and badges by default; every notification uses
+`setSilent(true)` and low priority as well as `setOnlyAlertOnce(true)`. A single notification ID
+is updated with recognition progress, mode, last action and the saved due time. Optional
+recording/edit cues are independent of notification alerts.
+
+`ShakeDetector` requires two distinct 2.7g peaks within 1.2 seconds, separated by at least
+180ms. Force and cooldown are configurable (2.7g and 500ms by default). `ShakeSequence` groups
+complete gestures until a configurable quiet gap (1400ms by default), dispatching only one
+single/double/triple action; larger groups are ignored. `ShakeActionEngine` implements the
+Ready, Recording, After recording, Minutes and Hours contexts with monotonic idle deadlines
+and a wall-clock alarm time. `ShakeSettingsStore` persists validated values and one action per
+context/count in the existing settings DataStore; settings are loaded before sensor registration
+and remain fixed for the listening session. `ShakeSettingsScreen` exposes mappings, increments,
+timeouts, detection and feedback controls. An in-memory StateFlow holds the last 30 recognized
+groups and saves for inspection; it contains no audio. `RecordingOwner` prevents the service and editor from
+capturing simultaneously. `ShakeRecordingSound` uses short notification-stream tones after
+capture starts and after it stops; each tone generator releases independently of service
+shutdown. Editing cues distinguish Minutes and Hours mode. The service stays foreground until
+a user-requested stop has saved the active take or pending time edit.
+
+`ShakeDraftStore` writes to private `files/shake_recordings/`, renaming finalized takes from
+`.recording` to `.m4a`. A completed file is held through the entry/edit window, protected from
+inbox import/deletion. Finishing, timeout or service shutdown consumes that pending slot once.
+`ShakeReminderCreator` copies it to `files/reminders/`, inserts a one-time reminder at the selected
+time (initially five minutes after stop, without rounding), applies
+the default follow-up setting, and schedules its alarm. The database/audio handoff completes
+off the main thread even if the controls close. A short wake lock covers the save. Only then
+is the inbox original removed. Database failures keep the inbox original; scheduling failures
+keep the saved reminder and audio for editing. The notification opens the new reminder.
+
+Older or failed takes can still be imported through the inbox. The editor works on a temporary
+copy; only a successful reminder save consumes the original. A process killed during time
+editing leaves the completed take in the recovery inbox, without restoring the time selection.
+Incomplete takes after abrupt
+process termination are excluded. The manual reminder backup includes takes after they become
+reminders, not unassigned inbox recordings. New shake UI strings currently use the English
+fallback in `values/shake.xml`.
+
 ## Backup format
 
 `ReminderBackupManager` exports active reminders to a ZIP file containing `backup.json` (enums

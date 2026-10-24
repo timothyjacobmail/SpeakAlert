@@ -99,6 +99,7 @@ class AddEditViewModelTest {
         whenever(settingsRepository.showTypedReminderSection).thenReturn(MutableStateFlow(true))
         whenever(settingsRepository.showShortLabelSection).thenReturn(MutableStateFlow(true))
         whenever(settingsRepository.defaultMissedPolicy).thenReturn(MutableStateFlow("SKIP_TO_NEXT"))
+        whenever(settingsRepository.defaultFollowUpMinutes).thenReturn(MutableStateFlow(0))
         
         viewModel = AddEditViewModel(
             repository,
@@ -110,6 +111,95 @@ class AddEditViewModelTest {
             enhancer,
             UnconfinedTestDispatcher()
         )
+    }
+
+    @Test
+    fun `canceling an imported shake take preserves the inbox original`() = runTest {
+        val store = com.ghostgramlabs.speakalert.shake.ShakeDraftStore(context.filesDir)
+        val original = store.finish(store.newRecording().apply { writeText("voice") })
+        viewModel.applyDefaultsForNewReminder(original.nameWithoutExtension)
+        advanceUntilIdle()
+        val imported = File(viewModel.uiState.value.recordedAudioPath!!)
+        assertNotEquals(original, imported)
+        assertEquals("voice", imported.readText())
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+        viewModel.discardDraft()
+        advanceUntilIdle()
+        assertTrue(original.exists())
+        assertFalse(imported.exists())
+    }
+
+    @Test
+    fun `saved shake take becomes reminder audio and consumes the inbox original`() = runTest {
+        val store = com.ghostgramlabs.speakalert.shake.ShakeDraftStore(context.filesDir)
+        val original = store.finish(store.newRecording().apply { writeText("voice") })
+        whenever(repository.insertReminder(any())).thenReturn(42L)
+        viewModel.applyDefaultsForNewReminder(original.nameWithoutExtension)
+        advanceUntilIdle()
+        viewModel.saveReminder()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.saveCompleted)
+        assertFalse(original.exists())
+        assertEquals("voice", File(viewModel.uiState.value.recordedAudioPath!!).readText())
+        verify(scheduler).schedule(any(), org.mockito.kotlin.eq(false))
+    }
+
+    @Test
+    fun `failed save retains original shake take and editor copy for retry`() = runTest {
+        val store = com.ghostgramlabs.speakalert.shake.ShakeDraftStore(context.filesDir)
+        val original = store.finish(store.newRecording().apply { writeText("voice") })
+        whenever(repository.insertReminder(any())).thenThrow(IllegalStateException("disk full"))
+        viewModel.applyDefaultsForNewReminder(original.nameWithoutExtension)
+        advanceUntilIdle()
+        viewModel.saveReminder()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.saveCompleted)
+        assertTrue(original.exists())
+        assertEquals("voice", File(viewModel.uiState.value.recordedAudioPath!!).readText())
+    }
+
+    @Test
+    fun `replacing imported shake audio leaves its original in the inbox`() = runTest {
+        val store = com.ghostgramlabs.speakalert.shake.ShakeDraftStore(context.filesDir)
+        val original = store.finish(store.newRecording().apply { writeText("original voice") })
+        whenever(repository.insertReminder(any())).thenReturn(42L)
+        viewModel.applyDefaultsForNewReminder(original.nameWithoutExtension)
+        advanceUntilIdle()
+        viewModel.setCustomAudio("content://audio/new", "Replacement")
+        viewModel.saveReminder()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.saveCompleted)
+        assertTrue(original.exists())
+    }
+
+    @Test
+    fun `busy microphone preserves imported audio even with enhancement disabled`() = runTest {
+        experimentalVoiceEnhancementEnabled.value = false
+        val store = com.ghostgramlabs.speakalert.shake.ShakeDraftStore(context.filesDir)
+        val original = store.finish(store.newRecording().apply { writeText("voice") })
+        viewModel.applyDefaultsForNewReminder(original.nameWithoutExtension)
+        advanceUntilIdle()
+        val path = viewModel.uiState.value.recordedAudioPath!!
+        org.mockito.kotlin.doThrow(IllegalStateException("Microphone busy"))
+            .whenever(recorder).start(any(), any())
+        viewModel.startRecording()
+        assertFalse(viewModel.uiState.value.isRecording)
+        assertEquals(RecordingIssue.CAPTURE_FAILED, viewModel.uiState.value.recordingIssue)
+        assertEquals(path, viewModel.uiState.value.recordedAudioPath)
+        assertEquals("voice", File(path).readText())
+        assertTrue(original.exists())
+    }
+
+    @Test
+    fun `recomposing imported editor does not replace edits and missing takes fail clearly`() = runTest {
+        viewModel.applyDefaultsForNewReminder("../private")
+        advanceUntilIdle()
+        assertEquals(RecordingIssue.IMPORT_FAILED, viewModel.uiState.value.recordingIssue)
+        assertFalse(viewModel.uiState.value.isImporting)
+        viewModel.updateTitle("Keep this")
+        viewModel.applyDefaultsForNewReminder("../private")
+        advanceUntilIdle()
+        assertEquals("Keep this", viewModel.uiState.value.title)
     }
 
     @Test

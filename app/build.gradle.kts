@@ -50,6 +50,9 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
         debug {
+            // Install beside the store/release app without replacing its signed package or data.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
             buildConfigField("boolean", "SHOW_DEBUG_OPTIONS", "true")
         }
     }
