@@ -10,8 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://play.google.com/store/apps/details?id=com.ghostgramlabs.speakalert">Google Play</a> ·
-  <a href="https://ghostgramlabs.com/SpeakAlert/">Website</a> ·
+ 
   <a href="https://ghostgramlabs.com/SpeakAlert/privacy.html">Privacy policy</a> ·
   <a href="LICENSE">Apache 2.0</a>
 </p>
