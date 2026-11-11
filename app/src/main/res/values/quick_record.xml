@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_title">Record reminder</string>
+    <string name="widget_record_description">Record immediately, then choose when to be reminded</string>
+    <string name="widget_record_caption">Record your voice, then pick a delay</string>
+    <string name="widget_record_button">Record now</string>
+    <string name="quick_record_recording">Recording…</string>
+    <string name="quick_record_stop">Stop recording</string>
+    <string name="quick_record_when">Remind me in</string>
+    <string name="quick_record_choose">Choose a time to save your voice reminder.</string>
+    <string name="quick_record_minutes">%1$d min</string>
+    <string name="quick_record_hour">1 hr</string>
+    <string name="quick_record_retake">Record again</string>
+    <string name="quick_record_permission">Microphone access is needed to record your reminder.</string>
+    <string name="quick_record_permission_button">Allow microphone</string>
+    <string name="quick_record_settings">Open app settings</string>
+    <string name="quick_record_failed">Could not record audio. Try recording again.</string>
+    <string name="quick_record_save_failed">Could not save or schedule your reminder. Choose a time to retry.</string>
+    <string name="quick_record_saving">Saving reminder…</string>
+    <string name="quick_record_ready">Ready to record your reminder</string>
+    <string name="quick_record_elapsed">%1$d:%2$02d</string>
+</resources>

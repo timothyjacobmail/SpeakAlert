@@ -44,8 +44,9 @@ hear it even when the phone is in your pocket or across the room.
 - **Shake to record.** Enable listening in Settings, then shake firmly twice to record even
   while locked. Distinct sounds confirm starting and stopping. Configure single, double and
   triple gesture actions, edit the reminder time by shaking, and check the recent action log.
-- **Widgets and Wear OS.** A quick-add widget, an upcoming-reminders widget, and alerts on
-  Wear OS watches.
+- **Widgets and Wear OS.** A quick-add widget, an upcoming-reminders widget, and a Record
+  reminder widget: tap to record, stop, then choose 5, 10, 15, or 30 minutes, or 1 hour to save.
+  Also supports alerts on Wear OS watches.
 - **Backup and restore.** Exports every reminder, voice recordings included.
 - **12 languages.** English, Spanish, Hindi, Arabic, Portuguese (Brazil), Russian, Vietnamese,
   Bengali, Telugu, Tamil, Greek and Malayalam, with right-to-left layout support.

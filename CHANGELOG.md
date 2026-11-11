@@ -5,6 +5,8 @@ User-facing changes to SpeakAlert, newest first. Version numbers match the Googl
 
 ## Unreleased
 
+- Add a Record reminder home-screen widget: tap to start recording immediately, stop, then
+  choose 5, 10, 15, or 30 minutes, or 1 hour to save the reminder.
 - Shake listening now updates one explicitly silent status notification with gesture recognition,
   the current mode/action, recording progress, saving status and the scheduled due time.
 - Customizable single/double/triple shake actions for recording and time editing, with separate

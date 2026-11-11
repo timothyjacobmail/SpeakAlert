@@ -114,6 +114,64 @@ class AddEditViewModelTest {
     }
 
     @Test
+    fun `quick recording schedules each preset from selection time with its audio`() = runTest {
+        whenever(repository.insertReminder(any())).thenReturn(42L)
+        org.mockito.kotlin.doAnswer { invocation ->
+            invocation.getArgument<File>(0).writeText("recorded voice")
+            null
+        }.whenever(recorder).start(any(), any())
+        val chosenAt = System.currentTimeMillis() + 17_123L
+        val presets = listOf(5, 10, 15, 30, 60)
+        presets.forEach { minutes ->
+            val editor = AddEditViewModel(repository, scheduler, settingsRepository, context,
+                recorder, player, enhancer, UnconfinedTestDispatcher())
+            editor.startRecording()
+            editor.stopRecording()
+            editor.saveQuickRecordedReminder(minutes, chosenAt)
+            advanceUntilIdle()
+            assertTrue(editor.uiState.value.saveCompleted)
+        }
+        val scheduled = argumentCaptor<ReminderEntity>()
+        verify(scheduler, times(5)).schedule(scheduled.capture(), org.mockito.kotlin.eq(false))
+        assertEquals(presets.map { chosenAt + it * 60_000L }, scheduled.allValues.map { it.nextTriggerAt })
+        scheduled.allValues.forEach { reminder ->
+            assertEquals("recorded voice", File(reminder.audioPath!!).readText())
+            assertEquals(RecurrenceType.NONE, reminder.recurrenceType)
+        }
+    }
+
+    @Test
+    fun `quick recording ignores repeated delay taps while saving`() = runTest {
+        whenever(repository.insertReminder(any())).thenReturn(42L)
+        org.mockito.kotlin.doAnswer { invocation ->
+            invocation.getArgument<File>(0).writeText("voice")
+            null
+        }.whenever(recorder).start(any(), any())
+        viewModel.startRecording()
+        viewModel.stopRecording()
+        viewModel.saveQuickRecordedReminder(5)
+        viewModel.saveQuickRecordedReminder(60)
+        advanceUntilIdle()
+        viewModel.saveQuickRecordedReminder(10)
+        verify(repository, times(1)).insertReminder(any())
+        verify(scheduler, times(1)).schedule(any(), org.mockito.kotlin.eq(false))
+    }
+
+    @Test
+    fun `quick recording refuses an empty take and allows recording again`() = runTest {
+        viewModel.startRecording()
+        viewModel.stopRecording()
+        viewModel.saveQuickRecordedReminder(5)
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.recordedAudioPath)
+        assertEquals(RecordingIssue.TOO_SHORT, viewModel.uiState.value.recordingIssue)
+        verify(repository, never()).insertReminder(any())
+        viewModel.startRecording()
+        assertTrue(viewModel.uiState.value.isRecording)
+        viewModel.stopRecording()
+    }
+
+    @Test
     fun `canceling an imported shake take preserves the inbox original`() = runTest {
         val store = com.ghostgramlabs.speakalert.shake.ShakeDraftStore(context.filesDir)
         val original = store.finish(store.newRecording().apply { writeText("voice") })

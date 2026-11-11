@@ -17,7 +17,7 @@ object SpeakAlertWidgetUpdater {
         CoroutineScope(SupervisorJob() + Dispatchers.IO),
         update = { context ->
             // Keep both widget-service lookups and broadcasts off the caller's thread.
-            for (provider in listOf(QuickReminderWidgetProvider::class.java, UpcomingRemindersWidgetProvider::class.java)) {
+            for (provider in listOf(QuickReminderWidgetProvider::class.java, RecordReminderWidgetProvider::class.java, UpcomingRemindersWidgetProvider::class.java)) {
                 try {
                     requestProviderUpdate(context, provider)
                 } catch (cancelled: CancellationException) {

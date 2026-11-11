@@ -121,6 +121,7 @@ class AddEditViewModel(
     
     companion object {
         const val MAX_RECORDING_SECONDS = 5 * 60 // 5 minutes
+        val QUICK_RECORD_DELAY_MINUTES = listOf(5, 10, 15, 30, 60)
     }
 
     init {
@@ -557,6 +558,20 @@ class AddEditViewModel(
 
     fun setFollowUpCheckMinutes(minutes: Int) {
         setDraftState(_uiState.value.copy(followUpCheckMinutes = minutes.coerceAtLeast(0)))
+    }
+
+    /** Widget delays run from the time the user chooses one, with no minute rounding. */
+    fun saveQuickRecordedReminder(minutes: Int, now: Long = System.currentTimeMillis()) {
+        require(minutes in QUICK_RECORD_DELAY_MINUTES)
+        val state = _uiState.value
+        if (state.isSaving || state.saveCompleted || state.isRecording) return
+        val audio = state.recordedAudioPath?.let(::File)
+        if (audio == null || !audio.isFile || audio.length() == 0L) {
+            _uiState.value = state.copy(recordedAudioPath = null, recordingIssue = RecordingIssue.TOO_SHORT)
+            return
+        }
+        setTriggerTime(now + minutes * 60_000L)
+        saveReminder()
     }
 
     /**
