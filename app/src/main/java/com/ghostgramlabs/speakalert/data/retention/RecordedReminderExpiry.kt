@@ -5,11 +5,12 @@ import java.io.File
 
 /** Picked content URIs and files outside the app's recordings directory are not recordings. */
 class RecordedReminderExpiry(private val recordingsDir: File) {
+    private val canonicalRecordingsDir by lazy(LazyThreadSafetyMode.PUBLICATION) { recordingsDir.canonicalFile }
     fun ownedFile(path: String?): File? {
         if (path.isNullOrBlank()) return null
         return runCatching {
             File(path).takeIf { it.isAbsolute }?.canonicalFile
-                ?.takeIf { it.parentFile == recordingsDir.canonicalFile }
+                ?.takeIf { it.parentFile == canonicalRecordingsDir }
         }.getOrNull()
     }
 

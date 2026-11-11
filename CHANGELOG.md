@@ -5,6 +5,10 @@ User-facing changes to SpeakAlert, newest first. Version numbers match the Googl
 
 ## Unreleased
 
+- Speed up optional voice-enhancement processing with an optimized Java FFT and reusable
+  output buffers. A synthetic phone benchmark used about 14% less processing time.
+- Move reminder-expiry list filtering off the UI thread and reuse cleanup jobs when the
+  expiry date is unchanged, avoiding extra WorkManager writes on snooze and Done.
 - Recorded reminders expire 7 days after creation, including active, repeating and completed
   reminders. Cleanup removes their stored audio, missed history, pending alarms and alerts;
   editing a reminder keeps its original creation date. Shared recordings remain while used

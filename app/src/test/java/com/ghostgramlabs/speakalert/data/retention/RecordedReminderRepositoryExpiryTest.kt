@@ -59,7 +59,15 @@ class RecordedReminderRepositoryExpiryTest {
         verify(dao).updateReminder(saved.capture())
         assertEquals(original.createdAt, saved.firstValue.createdAt)
         assertEquals("Edited", saved.firstValue.title)
+        assertTrue("An unchanged expiry must reuse the already scheduled cleanup", scheduled.isEmpty())
+    }
+
+    @Test fun `attaching a recording to a text reminder schedules its original creation deadline`() = runTest {
+        val original = recorded(7, now - 600_000L).copy(audioPath = null)
+        whenever(dao.getReminderById(7)).thenReturn(original)
+        repository().updateReminder(original.copy(audioPath = recorded(7, now).audioPath, createdAt = now))
         assertEquals(original.createdAt, scheduled.single().createdAt)
+        assertEquals(original.id, scheduled.single().id)
     }
 
     @Test fun `new recording cleanup is scheduled with its real inserted id`() = runTest {

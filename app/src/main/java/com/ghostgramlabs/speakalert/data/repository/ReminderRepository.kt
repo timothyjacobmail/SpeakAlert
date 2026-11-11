@@ -6,6 +6,8 @@ import com.ghostgramlabs.speakalert.data.model.ReminderEntity
 import com.ghostgramlabs.speakalert.widget.SpeakAlertWidgetUpdater
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 import com.ghostgramlabs.speakalert.data.retention.RecordedReminderExpiry
 import com.ghostgramlabs.speakalert.data.retention.RecordedReminderExpiryWorker
 import java.io.File
@@ -32,9 +34,10 @@ class OfflineReminderRepository(
         val at = now()
         return reminders.filterNot { expiry.isExpired(it, at) }
     }
-    override fun getAllRemindersStream(): Flow<List<ReminderEntity>> = reminderDao.getAllReminders().map(::unexpired)
-    override fun getActiveRemindersStream(): Flow<List<ReminderEntity>> = reminderDao.getActiveReminders().map(::unexpired)
-    override fun getCompletedRemindersStream(): Flow<List<ReminderEntity>> = reminderDao.getCompletedReminders().map(::unexpired)
+    // Canonical path checks can touch storage. Keep them off Compose's UI dispatcher.
+    override fun getAllRemindersStream(): Flow<List<ReminderEntity>> = reminderDao.getAllReminders().map(::unexpired).flowOn(Dispatchers.Default)
+    override fun getActiveRemindersStream(): Flow<List<ReminderEntity>> = reminderDao.getActiveReminders().map(::unexpired).flowOn(Dispatchers.Default)
+    override fun getCompletedRemindersStream(): Flow<List<ReminderEntity>> = reminderDao.getCompletedReminders().map(::unexpired).flowOn(Dispatchers.Default)
     override suspend fun getReminder(id: Long): ReminderEntity? = reminderDao.getReminderById(id)?.takeUnless { expiry.isExpired(it, now()) }
     override suspend fun getAllActiveReminders(): List<ReminderEntity> = unexpired(reminderDao.getAllActiveRemindersOnce())
     override suspend fun insertReminder(reminder: ReminderEntity): Long {
@@ -49,7 +52,9 @@ class OfflineReminderRepository(
         val original = reminderDao.getReminderById(reminder.id)
         val updated = original?.let { reminder.copy(createdAt = it.createdAt) } ?: reminder
         reminderDao.updateReminder(updated)
-        requestExpiry(updated)
+        // Playback, snooze and Done do not change expiry. Avoid another WorkManager database
+        // transaction for each of those updates; the existing job and periodic sweep remain.
+        if (original == null || expiry.expiresAt(original) != expiry.expiresAt(updated)) requestExpiry(updated)
         SpeakAlertWidgetUpdater.requestUpdate(context)
     }
     override suspend fun deleteReminder(reminder: ReminderEntity) {

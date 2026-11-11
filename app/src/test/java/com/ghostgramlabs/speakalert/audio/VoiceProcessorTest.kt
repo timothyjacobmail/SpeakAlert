@@ -252,6 +252,28 @@ class VoiceProcessorTest {
         assertTrue("Silence should not be amplified into anything (peak=$peak)", peak <= 1)
     }
 
+    @Test
+    fun `long denoised recordings reuse output buffers without losing samples`() {
+        val input = mix(speechLike(4_000f, SAMPLE_COUNT * 5), whiteNoise(500f, SAMPLE_COUNT * 5, 19))
+        val processor = VoiceProcessor(sampleRate)
+        processor.analyze(input, input.size)
+        val analysis = processor.finishAnalysis()
+        assertTrue(analysis.canDenoise)
+        processor.beginRender(analysis, processor.normalizationGain(analysis.peak, analysis.noiseFloor) ?: 1f)
+        val buffers = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<FloatArray, Boolean>())
+        var total = 0
+        val collect: (FloatArray, Int) -> Unit = { output, count ->
+            buffers.add(output)
+            assertTrue(count <= output.size)
+            for (i in 0 until count) assertTrue(output[i].isFinite())
+            total += count
+        }
+        processor.render(input, input.size, collect)
+        processor.finishRender(collect)
+        assertEquals(input.size, total)
+        assertTrue("Output-buffer count must stay bounded for a long recording", buffers.size <= 2)
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** Run both passes the way [Mp4AudioEnhancer] does, returning the processed samples. */
