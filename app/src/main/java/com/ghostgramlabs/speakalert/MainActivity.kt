@@ -60,6 +60,16 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.hasExtra("reminderId") || intent.getBooleanExtra("openAddEdit", false)) {
+            // Existing notification and widget routes still initialize their requested screen
+            // when singleTop delivers an intent to a running MainActivity.
+            recreate()
+        }
+    }
+
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(com.ghostgramlabs.speakalert.util.AppLocale.wrapContext(newBase))
     }

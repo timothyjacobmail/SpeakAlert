@@ -5,6 +5,8 @@ User-facing changes to SpeakAlert, newest first. Version numbers match the Googl
 
 ## Unreleased
 
+- Add quick-action recording that recognizes vivo shortcut launches after unlocking, with
+  notification Stop controls and voice reminders due 10 minutes after recording stops.
 - Add a Record reminder home-screen widget: tap to start recording immediately, stop, then
   choose 5, 10, 15, or 30 minutes, or 1 hour to save the reminder.
 - Shake listening now updates one explicitly silent status notification with gesture recognition,

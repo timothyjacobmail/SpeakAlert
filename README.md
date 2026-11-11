@@ -41,6 +41,10 @@ hear it even when the phone is in your pocket or across the room.
   tone-only mode, optional Do Not Disturb bypass, and battery-optimisation guidance for
   restrictive phones.
 - **Private playback.** Play reminders through the earpiece or Bluetooth headphones.
+- **Quick-action recording.** Assign SpeakAlert to your phone's screen-off quick action.
+  On vivo, hold Volume Down and unlock if asked; recording then starts automatically.
+  Activate the shortcut again (or use the notification's Stop button) to save a reminder
+  due 10 minutes after recording stops.
 - **Shake to record.** Enable listening in Settings, then shake firmly twice to record even
   while locked. Distinct sounds confirm starting and stopping. Configure single, double and
   triple gesture actions, edit the reminder time by shaking, and check the recent action log.

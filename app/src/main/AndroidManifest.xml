@@ -43,6 +43,15 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.SpeakAlert" />
+
+        <activity
+            android:name=".quickrecord.QuickActionLauncherActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity="${applicationId}.launcher"
+            android:showWhenLocked="true"
             android:theme="@style/Theme.SpeakAlert">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -73,6 +82,22 @@
 
         <service
             android:name=".shake.ShakeRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <activity
+            android:name=".quickrecord.QuickActionRecordingActivity"
+            android:label="@string/quick_action_launcher"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.quickaction"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.SpeakAlert" />
+
+        <service
+            android:name=".quickrecord.QuickActionRecordingService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
 

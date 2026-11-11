@@ -200,6 +200,23 @@ fun SettingsScreen(
             ) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
+                    var quickRecordingEnabled by remember {
+                        mutableStateOf(com.ghostgramlabs.speakalert.quickrecord.QuickActionSettings.enabled(context))
+                    }
+                    SwitchRow(
+                        text = stringResource(R.string.quick_action_title),
+                        description = stringResource(R.string.quick_action_description),
+                        checked = quickRecordingEnabled,
+                        onCheckedChange = {
+                            com.ghostgramlabs.speakalert.quickrecord.QuickActionSettings.setEnabled(context, it)
+                            quickRecordingEnabled = it
+                        }
+                    )
+                    Text(stringResource(R.string.quick_action_instructions), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
                     Text(stringResource(R.string.shake_title), style = MaterialTheme.typography.titleMedium)
                     TextButton(onClick = {
                         context.startActivity(Intent(context, com.ghostgramlabs.speakalert.shake.ShakeRecordingsActivity::class.java))
