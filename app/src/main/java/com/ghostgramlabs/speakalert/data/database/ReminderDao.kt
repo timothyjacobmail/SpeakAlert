@@ -27,6 +27,12 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE nextTriggerAt > 0 AND isCompleted = 0")
     suspend fun getAllActiveRemindersOnce(): List<ReminderEntity>
 
+    @Query("SELECT * FROM reminders WHERE audioPath IS NOT NULL AND createdAt <= :cutoff")
+    suspend fun getAudioRemindersCreatedBefore(cutoff: Long): List<ReminderEntity>
+
+    @Query("SELECT audioPath FROM reminders WHERE audioPath IS NOT NULL")
+    suspend fun getReferencedAudioPaths(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReminder(reminder: ReminderEntity): Long
 

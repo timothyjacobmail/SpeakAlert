@@ -217,6 +217,12 @@ fun SettingsScreen(
             }
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
+                    Text(stringResource(R.string.recording_retention_title), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.recording_retention_description), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
                     Text(stringResource(R.string.shake_title), style = MaterialTheme.typography.titleMedium)
                     TextButton(onClick = {
                         context.startActivity(Intent(context, com.ghostgramlabs.speakalert.shake.ShakeRecordingsActivity::class.java))

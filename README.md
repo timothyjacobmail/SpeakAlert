@@ -52,6 +52,9 @@ hear it even when the phone is in your pocket or across the room.
   reminder widget: tap to record, stop, then choose 5, 10, 15, or 30 minutes, or 1 hour to save.
   Also supports alerts on Wear OS watches.
 - **Backup and restore.** Exports every reminder, voice recordings included.
+- **Recording expiry.** Recorded reminders expire 7 days after creation, with their stored
+  audio and missed history removed automatically. Editing or completing them does not restart
+  the week. This applies to active and repeating voice reminders too.
 - **12 languages.** English, Spanish, Hindi, Arabic, Portuguese (Brazil), Russian, Vietnamese,
   Bengali, Telugu, Tamil, Greek and Malayalam, with right-to-left layout support.
 - **Fully offline.** No account, no analytics, no network calls for reminders. Data stays on

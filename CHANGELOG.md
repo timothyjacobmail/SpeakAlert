@@ -5,6 +5,10 @@ User-facing changes to SpeakAlert, newest first. Version numbers match the Googl
 
 ## Unreleased
 
+- Recorded reminders expire 7 days after creation, including active, repeating and completed
+  reminders. Cleanup removes their stored audio, missed history, pending alarms and alerts;
+  editing a reminder keeps its original creation date. Shared recordings remain while used
+  by a newer reminder.
 - Add quick-action recording that recognizes vivo shortcut launches after unlocking, with
   notification Stop controls and voice reminders due 10 minutes after recording stops.
 - Add a Record reminder home-screen widget: tap to start recording immediately, stop, then

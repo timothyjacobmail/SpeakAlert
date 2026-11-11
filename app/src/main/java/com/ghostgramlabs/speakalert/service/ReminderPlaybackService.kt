@@ -450,8 +450,17 @@ class ReminderPlaybackService : Service(), TextToSpeech.OnInitListener, SensorEv
 
             // Capture reminderId for completion logic
             val reminderId = intent?.getLongExtra(EXTRA_ID, -1L) ?: -1L
+            if (intent?.action == ACTION_STOP_IF_MATCHING) {
+                if (currentReminderId == -1L || currentReminderId == reminderId) {
+                    stopProgressUpdates()
+                    broadcastPlaybackStatus(isPlaying = false)
+                    stopSelf()
+                }
+                return START_NOT_STICKY
+            }
             if (reminderId != -1L) {
                 currentReminderId = reminderId
+                activeReminderId = reminderId
             }
 
             if (intent?.action == "ACTION_STOP_SERVICE" || intent?.action == ACTION_STOP) {
@@ -507,6 +516,12 @@ class ReminderPlaybackService : Service(), TextToSpeech.OnInitListener, SensorEv
             dndBypassEnabled = intent?.getBooleanExtra(EXTRA_DND_BYPASS, true) ?: true
 
             playbackRequestJob = scope.launch {
+                // Recheck at playback time: an old notification may outlive its recording.
+                if (id != -1L && (application as VoiceReminderApp).container.reminderRepository.getReminder(id) == null) {
+                    broadcastPlaybackStatus(isPlaying = false)
+                    stopSelf()
+                    return@launch
+                }
                 privatePlaybackEnabled = readLatestPrivatePlaybackSetting(requestedPrivatePlayback)
                 configureAudioRoute(privatePlaybackEnabled)
 
@@ -1124,6 +1139,7 @@ class ReminderPlaybackService : Service(), TextToSpeech.OnInitListener, SensorEv
         super.onDestroy()
         scope.cancel()
         FileLogger.log("SERVICE: onDestroy completed")
+        activeReminderId = -1L
     }
 
     companion object {
@@ -1138,6 +1154,8 @@ class ReminderPlaybackService : Service(), TextToSpeech.OnInitListener, SensorEv
         const val EXTRA_TTS_TEXT = "extra_tts_text"
         
         const val ACTION_STOP = "action_stop"
+        private const val ACTION_STOP_IF_MATCHING = "stop_if_matching_reminder"
+        @Volatile private var activeReminderId = -1L
         const val ACTION_REPLAY = "action_replay"
         const val ACTION_SEEK = "action_seek"
         const val EXTRA_LOOP = "extra_loop"
@@ -1193,6 +1211,14 @@ class ReminderPlaybackService : Service(), TextToSpeech.OnInitListener, SensorEv
             }
         }
         
+        fun stopIfPlaying(context: Context, reminderId: Long) {
+            if (activeReminderId != reminderId) return
+            runCatching {
+                context.startService(Intent(context, ReminderPlaybackService::class.java)
+                    .setAction(ACTION_STOP_IF_MATCHING).putExtra(EXTRA_ID, reminderId))
+            }.onFailure { FileLogger.logError("SERVICE", "Could not stop expired reminder", it) }
+        }
+
         fun stop(context: Context) {
             val intent = Intent(context, ReminderPlaybackService::class.java).apply {
                 action = ACTION_STOP

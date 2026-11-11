@@ -22,6 +22,11 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
         // This is TEMPORARY - snoozeUntil is cleared when the alarm fires.
         // After snooze fires, recurrence resumes from nextTriggerAt (unchanged).
         val triggerTime = reminder.snoozeUntil ?: reminder.nextTriggerAt
+        val expiry = com.ghostgramlabs.speakalert.data.retention.RecordedReminderExpiry(java.io.File(context.filesDir, "reminders"))
+        if (expiry.isExpired(reminder, maxOf(triggerTime, System.currentTimeMillis()))) {
+            cancel(reminder)
+            return
+        }
         
         com.ghostgramlabs.speakalert.util.FileLogger.log("SCHEDULER: Scheduling alarm id=${reminder.id} (boot=$isBootReschedule) for $triggerTime (${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date(triggerTime))})")
         
