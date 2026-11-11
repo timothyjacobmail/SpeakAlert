@@ -43,8 +43,9 @@ hear it even when the phone is in your pocket or across the room.
   restrictive phones. Reminders can optionally be delivered as alarm clocks, which phones'
   battery savers do not hold back.
 - **Private playback.** Play reminders through the earpiece or Bluetooth headphones.
-- **Widgets and Wear OS.** A quick-add widget, an upcoming-reminders widget, and alerts on
-  Wear OS watches.
+- **Widgets and Wear OS.** A quick-add widget, an upcoming-reminders widget, and a Record
+  reminder widget: tap to record, stop, then choose 5, 10, 15, or 30 minutes, or 1 hour to save.
+  Also supports alerts on Wear OS watches.
 - **Backup and restore.** Exports every reminder, voice recordings included.
 - **12 languages.** English, Spanish, Hindi, Arabic, Portuguese (Brazil), Russian, Vietnamese,
   Bengali, Telugu, Tamil, Greek and Malayalam, with right-to-left layout support.

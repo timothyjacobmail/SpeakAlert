@@ -3,6 +3,11 @@
 User-facing changes to SpeakAlert, newest first. Version numbers match the Google Play release
 (`versionName` in `app/build.gradle.kts`).
 
+## Unreleased
+
+- Add a Record reminder home-screen widget: tap to start recording immediately, stop, then
+  choose 5, 10, 15, or 30 minutes, or 1 hour to save the reminder.
+
 ## 2.0.45 - 2026-10-24
 
 - The "What's new" sheet describes what changed since 2.0.40, the last production release:
