@@ -5,7 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
-import android.widget.RemoteViews
+import android.os.Bundle
 import com.ghostgramlabs.speakalert.R
 
 class RecordReminderWidgetProvider : AppWidgetProvider() {
@@ -17,10 +17,15 @@ class RecordReminderWidgetProvider : AppWidgetProvider() {
                 Intent(context, QuickRecordReminderActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            manager.updateAppWidget(id, RemoteViews(context.packageName, R.layout.widget_record_reminder).apply {
+            manager.updateAppWidget(id, ActionWidgetLayouts.create(context, manager, id,
+                R.layout.widget_record_reminder_compact, R.layout.widget_record_reminder) {
                 setOnClickPendingIntent(R.id.record_widget_root, record)
                 setOnClickPendingIntent(R.id.record_widget_button, record)
             })
         }
+    }
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, widgetId: Int, newOptions: Bundle) {
+        onUpdate(context, manager, intArrayOf(widgetId))
     }
 }

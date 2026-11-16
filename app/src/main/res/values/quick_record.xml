@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="widget_record_badge" translatable="false">⚡</string>
     <string name="widget_record_title">Record reminder</string>
     <string name="widget_record_description">Record immediately, then choose when to be reminded</string>
     <string name="widget_record_caption">Record your voice, then pick a delay</string>

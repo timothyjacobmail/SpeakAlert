@@ -2,6 +2,14 @@
 
 Add **SpeakAlert > Record reminder** from the launcher's widget picker.
 
+Both **Create reminder** and **Record reminder** can be resized down to one home-screen
+cell. Long-press a placed widget and drag its resize handles inward: it should show only
+the app icon, without a card, caption, or button. The recording icon has a **⚡** badge
+at its bottom-right, including in the expanded card. Enlarge the widget until the full
+card fits to restore its caption and button. Check resizing in both directions and
+after rotating the launcher; tapping anywhere in the small widget should still work.
+If a launcher caches the old minimum size after an app update, remove and re-add the widget.
+
 1. Tap the widget. With microphone permission granted, recording should start immediately.
    On first use, grant microphone access and verify recording starts after approval.
 2. Speak, tap **Stop recording**, and verify the five choices: **5 min**, **10 min**,
