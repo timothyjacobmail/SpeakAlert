@@ -35,6 +35,16 @@ Only explicit pin coordinates are imported; an `@latitude,longitude` map camera 
 
 Keep list/search and link import available without a native map key. Do not read the clipboard until the user chooses Paste link. Require review before using imported data, and never save the link itself as a stop address. Link fields use the URL keyboard with autocorrect disabled; Read link and Done dismiss the keyboard before review.
 
+## Share directly from Google Maps
+
+Open a boarding stop in Google Maps, tap Share, then choose SpeakAlert (use More/All apps if needed). The standard exported MapsBusShareActivity accepts ACTION_SEND with text/plain. It validates a bounded Google Maps URL before resolving it; unrelated text and directions show help. Subject/title text can supply a missing place name. Android filters share targets by MIME type, so SpeakAlert may also be offered for other text shares.
+
+The link is prefilled and read automatically. Review the stop, choose Use stop, enter the line and destination/direction, then Continue to the normal reminder editor. New drafts start weekdays at 4:50 PM UAE, with one spoken alert and no follow-up check. Review the schedule and Save to activate it. No reminder or alarm is created by receiving a share or confirming the stop.
+
+The share activity owns a separate ViewModel and uses standard launch behavior. It does not clear or recreate MainActivity, so an existing editor is preserved. Back/Cancel returns to the sender; each new share starts a separate draft. The route dialog and selected stop survive rotation, and reopening the editor on rotation does not reseed its shared journey. Imported custom stops do not gain the original M2 timetable.
+
+Keep the share path focused on reviewing the stop and creating a draft; avoid startup tips, automatic speech, API-key setup, or any automatic save. Link import retains the same no-key behavior and short-link limits described above. Android references: [receiving shared data](https://developer.android.com/training/sharing/receive), [tasks and back stack](https://developer.android.com/guide/components/activities/tasks-and-back-stack).
+
 ## Stop catalogue
 
 The asset contains 4,070 public stop records downloaded on 17 November 2026 from [Abu Dhabi Spatial Data Infrastructure, OpenData Bus Stops layer 801](https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/801). It includes English/Arabic names, codes and coordinates. Download date does not imply that every source name is current; for example stop 11700B retains an older street-name label. The original Tawjeeh stop is also available under its familiar name. Use custom stop entry when the official snapshot and Google use different names. The app does not upload the catalogue or fetch it on every search.

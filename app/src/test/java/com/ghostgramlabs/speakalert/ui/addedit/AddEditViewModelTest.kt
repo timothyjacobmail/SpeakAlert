@@ -261,6 +261,43 @@ class AddEditViewModelTest {
     }
 
     @Test
+    fun `shared bus creates an unsaved weekday draft and recreation preserves edits`() = runTest {
+        val journey = com.ghostgramlabs.speakalert.transit.BusJourney(
+            com.ghostgramlabs.speakalert.transit.BusAlert.defaultStop, "111", "Marina Mall, Abu Dhabi")
+        whenever(settingsRepository.defaultFollowUpMinutes).thenReturn(MutableStateFlow(30))
+        viewModel.applyDefaultsForNewReminder(sharedBusJourney = journey)
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(listOf(journey), com.ghostgramlabs.speakalert.transit.BusAlert.decode(state.reminderText)!!.journeys)
+        assertTrue(state.hasUnsavedChanges)
+        assertEquals(0, state.followUpCheckMinutes)
+        assertFalse(state.loopPlayback)
+        assertEquals(RecurrenceType.WEEKLY, state.recurrenceType)
+        val at = java.time.Instant.ofEpochMilli(state.triggerTime).atZone(java.time.ZoneId.of("Asia/Dubai"))
+        assertEquals(16, at.hour)
+        assertEquals(50, at.minute)
+        assertTrue(at.dayOfWeek.value in 1..5)
+        viewModel.updateTitle("My shared bus")
+        viewModel.setTriggerTime(state.triggerTime + 60_000)
+        viewModel.applyDefaultsForNewReminder(sharedBusJourney = journey)
+        advanceUntilIdle()
+        assertEquals("My shared bus", viewModel.uiState.value.title)
+        assertEquals(state.triggerTime + 60_000, viewModel.uiState.value.triggerTime)
+        org.mockito.kotlin.verifyNoInteractions(scheduler)
+        org.mockito.kotlin.verify(repository, org.mockito.kotlin.never()).insertReminder(any())
+    }
+
+    @Test
+    fun `invalid shared journey never becomes a reminder draft`() = runTest {
+        viewModel.applyDefaultsForNewReminder(sharedBusJourney =
+            com.ghostgramlabs.speakalert.transit.BusJourney(com.ghostgramlabs.speakalert.transit.BusAlert.defaultStop, "", ""))
+        advanceUntilIdle()
+        assertEquals("", viewModel.uiState.value.reminderText)
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+        org.mockito.kotlin.verifyNoInteractions(scheduler)
+    }
+
+    @Test
     fun `saveReminder with valid text saves to repository and shedules alarm`() = runTest {
         // Arrange
         val title = "Buy milk"

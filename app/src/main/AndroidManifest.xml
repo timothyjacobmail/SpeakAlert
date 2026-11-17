@@ -55,6 +55,17 @@
             android:theme="@style/Theme.SpeakAlert" />
 
         <activity
+            android:name=".transit.MapsBusShareActivity"
+            android:exported="true"
+            android:theme="@style/Theme.SpeakAlert">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".recorderimport.RecorderImportSettingsActivity"
             android:label="@string/recorder_import_title"
             android:exported="true"

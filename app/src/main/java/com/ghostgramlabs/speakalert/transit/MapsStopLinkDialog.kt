@@ -24,11 +24,12 @@ import java.util.UUID
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), onDismiss: () -> Unit, selected: (BusStop) -> Unit) {
+internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText: String = "", autoRead: Boolean = false,
+    onDismiss: () -> Unit, selected: (BusStop) -> Unit) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var link by rememberSaveable { mutableStateOf("") }
+    var link by rememberSaveable { mutableStateOf(initialText) }
     var name by rememberSaveable { mutableStateOf("") }
     var address by rememberSaveable { mutableStateOf("") }
     var lat by rememberSaveable { mutableStateOf<Double?>(null) }
@@ -40,6 +41,25 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), onDismiss: (
         link = text.take(10_000)
         review = false; name = ""; address = ""; lat = null; lon = null; message = null
     }
+    fun readLink() {
+        scope.launch {
+            busy = true; message = null
+            try {
+                val draft = MapsStopLink.fillFromCatalogue(MapsStopLinkResolver.read(link), stops)
+                name = draft.name; address = draft.address; lat = draft.latitude; lon = draft.longitude
+                message = if (draft.hasCoordinates) "Location found from the link or an exact catalogue match. Check the boarding-stop name."
+                    else "This link does not include a pin. Check the name and full stop address below."
+            } catch (e: CancellationException) { throw e }
+            catch (e: IllegalArgumentException) {
+                message = e.message ?: "This link could not be read. Enter the stop details below."
+            } catch (_: java.io.IOException) {
+                message = "Could not expand this link. Check your connection, or enter the stop details below."
+            } finally { busy = false; review = true }
+        }
+    }
+    LaunchedEffect(initialText) {
+        if (autoRead && !review && link == initialText && link.isNotBlank()) readLink()
+    }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Stop from Google Maps link") },
         text = {
             val focusManager = LocalFocusManager.current
@@ -47,7 +67,8 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), onDismiss: (
             fun finishTyping() { focusManager.clearFocus(force = true); keyboard?.hide() }
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("In Google Maps, open the bus stop, tap Share, then Copy link. Paste it here and review the stop before using it.")
+                Text(if (initialText.isNotBlank()) "Shared from Google Maps. Review the boarding stop before continuing."
+                    else "In Google Maps, open the bus stop, tap Share, then Copy link. Paste it here and review the stop before using it.")
                 OutlinedTextField(link, { changeLink(it) }, label = { Text("Google Maps share link") },
                     enabled = !busy, modifier = Modifier.fillMaxWidth(), maxLines = 3,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrect = false, imeAction = ImeAction.Done),
@@ -65,20 +86,7 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), onDismiss: (
                 }
                 OutlinedButton(enabled = link.isNotBlank() && !busy, onClick = {
                     finishTyping()
-                    scope.launch {
-                        busy = true; message = null
-                        try {
-                            val draft = MapsStopLink.fillFromCatalogue(MapsStopLinkResolver.read(link), stops)
-                            name = draft.name; address = draft.address; lat = draft.latitude; lon = draft.longitude
-                            message = if (draft.hasCoordinates) "Location found from the link or an exact catalogue match. Check the boarding-stop name."
-                                else "This link does not include a pin. Check the name and full stop address below."
-                        } catch (e: CancellationException) { throw e }
-                        catch (e: IllegalArgumentException) {
-                            message = e.message ?: "This link could not be read. Enter the stop details below."
-                        } catch (_: java.io.IOException) {
-                            message = "Could not expand this link. Check your connection, or enter the stop details below."
-                        } finally { busy = false; review = true }
-                    }
+                    readLink()
                 }) { Text(if (busy) "Reading link…" else "Read link") }
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }

@@ -118,6 +118,7 @@ class AddEditViewModel(
     private var savedDraft: ReminderDraft? = null
     private var importedShakeDraftId: String? = null
     private var shakeImportAttempted = false
+    private var busShareImportAttempted = false
     
     companion object {
         const val MAX_RECORDING_SECONDS = 5 * 60 // 5 minutes
@@ -172,7 +173,12 @@ class AddEditViewModel(
      * Pre-populate fields for a brand-new reminder from user-level defaults.
      * Should be called only when reminderId == -1L. Has no effect on existing reminders.
      */
-    fun applyDefaultsForNewReminder(shakeDraftId: String? = null) {
+    fun applyDefaultsForNewReminder(shakeDraftId: String? = null,
+        sharedBusJourney: com.ghostgramlabs.speakalert.transit.BusJourney? = null) {
+        if (sharedBusJourney != null) {
+            if (!sharedBusJourney.valid() || shakeDraftId != null || busShareImportAttempted) return
+            busShareImportAttempted = true
+        }
         // Configuration changes must not replace an edited take with the original again.
         if (shakeDraftId != null && shakeImportAttempted) return
         if (shakeDraftId != null) shakeImportAttempted = true
@@ -182,6 +188,16 @@ class AddEditViewModel(
             // Only apply if state hasn't already been loaded into edit mode
             if (_uiState.value.initialReminderId == -1L) {
                 setSavedDraft(_uiState.value.copy(followUpCheckMinutes = defaultFollowUp))
+                if (sharedBusJourney != null) {
+                    updateTitle("Bus arrivals")
+                    setFollowUpCheckMinutes(0)
+                    setLoopPlayback(false)
+                    updateReminderText(com.ghostgramlabs.speakalert.transit.BusAlert.encode(
+                        com.ghostgramlabs.speakalert.transit.BusAlert(listOf(sharedBusJourney))))
+                    setTriggerTime(com.ghostgramlabs.speakalert.transit.M2Timetable
+                        .nextWeekdayAlarm(java.time.Instant.now()).toEpochMilli())
+                    setRecurrence(RecurrenceModel.Weekly(com.ghostgramlabs.speakalert.transit.M2Timetable.weekdays))
+                }
                 if (shakeDraftId != null) {
                     val copy = File(tempDir, "temp_${UUID.randomUUID()}.m4a")
                     try {

@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -16,6 +18,9 @@ import com.google.gson.Gson
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -117,21 +122,28 @@ private fun BusCheck(label: String, checked: Boolean, enabled: Boolean = true, c
     }
 }
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-private fun BusJourneyDialog(initial: BusJourney?, stops: List<BusStop>, knownLines: List<String>,
+internal fun BusJourneyDialog(initial: BusJourney?, stops: List<BusStop>, knownLines: List<String>,
+    title: String = if (initial == null) "Add bus / stop" else "Edit bus / stop", confirmLabel: String = "Apply",
     onDismiss: () -> Unit, onApply: (BusJourney) -> Unit) {
     var stop by rememberSaveable(stateSaver = BusStopDraftSaver) { mutableStateOf(initial?.stop ?: BusAlert.defaultStop) }
     var line by rememberSaveable { mutableStateOf(initial?.line.orEmpty()) }
     var destination by rememberSaveable { mutableStateOf(initial?.destination.orEmpty()) }
     var picker by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (initial == null) "Add bus / stop" else "Edit bus / stop") },
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(title) },
         text = {
+            val focusManager = LocalFocusManager.current
+            val keyboard = LocalSoftwareKeyboardController.current
+            fun finishTyping() { focusManager.clearFocus(force = true); keyboard?.hide() }
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Boarding stop", style = MaterialTheme.typography.titleSmall)
                 OutlinedButton(onClick = { picker = true }) { Text("${stop.name}\n${stop.codeLabel}") }
                 OutlinedTextField(value = line, onValueChange = { line = it.take(24); error = false },
                     label = { Text("Bus line") }, placeholder = { Text("M2, 111, 101…") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(autoCorrect = false, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { finishTyping() }),
                     isError = error && line.isBlank(), supportingText = { Text("Enter the line shown at the stop, or choose one below.") })
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (listOf("M2") + knownLines).distinct().forEach { code ->
@@ -140,6 +152,8 @@ private fun BusJourneyDialog(initial: BusJourney?, stops: List<BusStop>, knownLi
                 }
                 OutlinedTextField(value = destination, onValueChange = { destination = it.take(240); error = false },
                     label = { Text("Destination / direction") }, minLines = 2,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { finishTyping() }),
                     isError = error && destination.isBlank(),
                     supportingText = { Text("Enter a destination reached in this direction, including city. Google needs it to find a journey.") })
                 if (initial == null) TextButton(onClick = { stop = BusAlert.defaultStop; line = "M2"; destination = BusAlert.defaultDestination }) {
@@ -152,6 +166,6 @@ private fun BusJourneyDialog(initial: BusJourney?, stops: List<BusStop>, knownLi
             val preset = stop == BusAlert.defaultStop && line.trim().equals("M2", true) && destination.trim() == BusAlert.defaultDestination
             val journey = BusJourney(stop, line.trim().uppercase(), destination.trim(), initial?.enabled ?: true, offlineM2 = preset)
             if (journey.valid()) onApply(journey) else error = true
-        }) { Text("Apply") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+        }) { Text(confirmLabel) } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
     if (picker) BusStopPicker(stops.distinctBy { it.id }, initialStop = stop, onDismiss = { picker = false }) { stop = it; picker = false }
 }

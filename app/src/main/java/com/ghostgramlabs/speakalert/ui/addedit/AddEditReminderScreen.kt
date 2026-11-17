@@ -78,7 +78,8 @@ fun AddEditReminderScreen(
     shakeDraftId: String? = null,
     navigateBack: () -> Unit,
     onNavigateUp: () -> Unit,
-    viewModel: AddEditViewModel = viewModel(factory = AppViewModelProvider.Factory)
+    viewModel: AddEditViewModel = viewModel(factory = AppViewModelProvider.Factory),
+    sharedBusJourney: com.ghostgramlabs.speakalert.transit.BusJourney? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val busAlert = remember(uiState.reminderText) { BusAlert.decode(uiState.reminderText) }
@@ -115,7 +116,7 @@ fun AddEditReminderScreen(
         if (reminderId != -1L) {
             viewModel.loadReminder(reminderId)
         } else {
-            viewModel.applyDefaultsForNewReminder(shakeDraftId)
+            viewModel.applyDefaultsForNewReminder(shakeDraftId, sharedBusJourney)
         }
     }
     
