@@ -13,6 +13,10 @@ val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
 val releaseStoreFile: String? = localProps.getProperty("speakalert.storeFile")
+val mapsProps = Properties().apply {
+    rootProject.file("maps.local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val mapsApiKey = mapsProps.getProperty("maps.sdk.key", "").trim()
 
 android {
     namespace = "com.ghostgramlabs.speakalert"
@@ -22,8 +26,10 @@ android {
         applicationId = "com.ghostgramlabs.speakalert"
         minSdk = 26
         targetSdk = 36
-        versionCode = 62
-        versionName = "2.0.41"
+        versionCode = 63
+        versionName = "2.0.42"
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("boolean", "HAS_MAPS_KEY", mapsApiKey.isNotEmpty().toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -92,6 +98,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.0")
+    implementation("com.google.android.gms:play-services-maps:20.1.0")
     implementation(platform("androidx.compose:compose-bom:2023.10.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")

@@ -43,6 +43,7 @@
         android:theme="@style/Theme.SpeakAlert"
         android:enableOnBackInvokedCallback="false"
         tools:targetApi="33">
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}" />
         <!-- Predictive back is on by default when targeting Android 16, and it stops the Back
              key event that Material 1.1's bottom sheets listen for, so Back no longer closed
              any sheet. Remove this once the Compose/Material upgrade handles predictive back. -->

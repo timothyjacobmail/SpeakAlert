@@ -9,6 +9,7 @@ build/
 
 # Local configuration and secrets: never commit these
 local.properties
+maps.local.properties
 *.jks
 *.keystore
 google-services.json

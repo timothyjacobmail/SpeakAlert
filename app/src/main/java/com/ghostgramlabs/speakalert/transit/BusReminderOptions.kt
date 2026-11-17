@@ -10,6 +10,9 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
+import com.google.gson.Gson
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,13 +22,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private val BusStopDraftSaver = Saver<BusStop, String>(
+    save = { Gson().toJson(it) },
+    restore = { runCatching { Gson().fromJson(it, BusStop::class.java).takeIf { stop -> stop.valid() } }.getOrNull() }
+)
+
 @Composable
 fun BusReminderOptions(alert: BusAlert, onChange: (BusAlert) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var editIndex by remember { mutableStateOf<Int?>(null) }
-    var adding by remember { mutableStateOf(false) }
-    var removing by remember { mutableStateOf<Int?>(null) }
+    var editIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    var adding by rememberSaveable { mutableStateOf(false) }
+    var removing by rememberSaveable { mutableStateOf<Int?>(null) }
     val statuses = remember { mutableStateMapOf<String, String>() }
     var checking by remember { mutableStateOf<String?>(null) }
     val stops by produceState<List<BusStop>>(emptyList()) {
@@ -112,10 +120,10 @@ private fun BusCheck(label: String, checked: Boolean, enabled: Boolean = true, c
 @Composable
 private fun BusJourneyDialog(initial: BusJourney?, stops: List<BusStop>, knownLines: List<String>,
     onDismiss: () -> Unit, onApply: (BusJourney) -> Unit) {
-    var stop by remember { mutableStateOf(initial?.stop ?: BusAlert.defaultStop) }
-    var line by remember { mutableStateOf(initial?.line.orEmpty()) }
-    var destination by remember { mutableStateOf(initial?.destination.orEmpty()) }
-    var picker by remember { mutableStateOf(false) }
+    var stop by rememberSaveable(stateSaver = BusStopDraftSaver) { mutableStateOf(initial?.stop ?: BusAlert.defaultStop) }
+    var line by rememberSaveable { mutableStateOf(initial?.line.orEmpty()) }
+    var destination by rememberSaveable { mutableStateOf(initial?.destination.orEmpty()) }
+    var picker by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (initial == null) "Add bus / stop" else "Edit bus / stop") },
         text = {
@@ -145,44 +153,5 @@ private fun BusJourneyDialog(initial: BusJourney?, stops: List<BusStop>, knownLi
             val journey = BusJourney(stop, line.trim().uppercase(), destination.trim(), initial?.enabled ?: true, offlineM2 = preset)
             if (journey.valid()) onApply(journey) else error = true
         }) { Text("Apply") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
-    if (picker) BusStopPicker(stops.distinctBy { it.id }, onDismiss = { picker = false }) { stop = it; picker = false }
-}
-
-@Composable
-private fun BusStopPicker(stops: List<BusStop>, onDismiss: () -> Unit, selected: (BusStop) -> Unit) {
-    var query by remember { mutableStateOf("") }
-    var custom by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-    val matches = remember(stops, query) { BusStops.search(stops, query) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Choose bus stop") },
-        text = {
-            Column(Modifier.fillMaxWidth().heightIn(max = 450.dp)) {
-                OutlinedTextField(value = query, onValueChange = { query = it }, label = { Text("Search name or stop code") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth())
-                Text("Abu Dhabi public stop catalogue. Some stop names may be older; add a custom stop when needed.",
-                    style = MaterialTheme.typography.bodySmall)
-                LazyColumn(Modifier.weight(1f, fill = false)) {
-                    if (matches.isEmpty()) item { Text(if (stops.isEmpty()) "Loading stops…" else "No matching stops. Try a different name or add a custom stop.") }
-                    items(matches, key = { it.id }) { item ->
-                        Column(Modifier.fillMaxWidth().clickable { selected(item) }.padding(vertical = 12.dp)) {
-                            Text(item.name)
-                            Text("${item.codeLabel}", style = MaterialTheme.typography.bodySmall)
-                        }
-                        Divider()
-                    }
-                }
-                TextButton(onClick = { custom = true; name = query }) { Text("Add custom stop") }
-            }
-        },
-        confirmButton = {}, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
-    if (custom) AlertDialog(onDismissRequest = { custom = false }, title = { Text("Custom bus stop") },
-        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(name, { name = it.take(180) }, label = { Text("Stop name as shown in Google Maps") })
-            OutlinedTextField(address, { address = it.take(300) }, label = { Text("Full address, including city") })
-            Text("Use the exact boarding-stop name. A route boarding at a different stop will be rejected.")
-        } },
-        confirmButton = { TextButton(enabled = name.isNotBlank() && address.isNotBlank(), onClick = {
-            selected(BusStop("custom-" + java.util.UUID.randomUUID(), name.trim(), address.trim()))
-        }) { Text("Use stop") } }, dismissButton = { TextButton(onClick = { custom = false }) { Text("Cancel") } })
+    if (picker) BusStopPicker(stops.distinctBy { it.id }, initialStop = stop, onDismiss = { picker = false }) { stop = it; picker = false }
 }

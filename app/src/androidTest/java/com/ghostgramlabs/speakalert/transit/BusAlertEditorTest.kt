@@ -30,6 +30,56 @@ class BusAlertEditorTest {
         bitmap!!.recycle()
     }
 
+    @Test fun stopSelectionRequiresConfirmationAndCancelLeavesTheOriginalStop() {
+        assumeTrue(Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish"))
+        val original = BusAlert.defaultStop
+        val alternative = BusStop("near-test", "Near test stop", "Abu Dhabi", 24.38, 54.51)
+        val open = mutableStateOf(true)
+        var chosen = original
+        compose.setContent { VoiceReminderTheme {
+            if (open.value) BusStopPicker(listOf(original, alternative), original,
+                onDismiss = { open.value = false }) { chosen = it; open.value = false }
+        } }
+        compose.onNodeWithText("Search name or stop code").performTextInput("Near")
+        compose.onNodeWithText("Use stop").assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithText("Near test stop").performClick()
+        compose.runOnIdle { assertEquals(original, chosen) }
+        compose.onNodeWithText("Cancel").performClick()
+        compose.runOnIdle { assertEquals(original, chosen); open.value = true }
+        compose.onNodeWithText("Search name or stop code").performTextInput("Near")
+        compose.onNodeWithText("Near test stop").performClick()
+        compose.onNodeWithText("Use stop").performClick()
+        compose.runOnIdle { assertEquals(alternative, chosen) }
+    }
+
+    @Test fun importMapsPlaceLinkRequiresReviewAndRetainsThePin() {
+        assumeTrue(Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish"))
+        var chosen: BusStop? = null
+        val open = mutableStateOf(true)
+        compose.setContent { VoiceReminderTheme {
+            if (open.value) MapsStopLinkDialog(onDismiss = { open.value = false }) {
+                chosen = it; open.value = false
+            }
+        } }
+        compose.onNodeWithText("Use stop").assertIsNotEnabled()
+        compose.onNodeWithText("Google Maps share link").performTextInput(
+            "https://www.google.com/maps/place/Synthetic+boarding+stop/data=!3d24.38!4d54.51")
+        compose.onNodeWithText("Read link").performScrollTo().performClick()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Boarding-stop name").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.runOnIdle { assertNull(chosen) }
+        compose.onNodeWithText("Boarding-stop name").performScrollTo().assertTextContains("Synthetic boarding stop")
+        screenshot("maps-link-review")
+        compose.onNodeWithText("Use stop").performClick()
+        compose.runOnIdle {
+            assertEquals("Synthetic boarding stop", chosen!!.name)
+            assertEquals(24.38, chosen!!.latitude!!, 0.00001)
+            assertEquals(54.51, chosen!!.longitude!!, 0.00001)
+            assertTrue(chosen!!.valid())
+        }
+    }
+
     @Test fun chooseAStopAddAnotherLineAndCustomizeSpeechWithoutLosingExistingBus() {
         assumeTrue(Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish"))
         val state = mutableStateOf(BusAlert.default())
@@ -45,7 +95,8 @@ class BusAlertEditorTest {
         compose.onNodeWithText("Search name or stop code").performTextInput("11700")
         compose.waitUntil(10_000) { compose.onAllNodesWithText("St 15 / St 6").fetchSemanticsNodes().isNotEmpty() }
         screenshot("stop-search")
-        compose.onNodeWithText("St 15 / St 6").performClick()
+        compose.onNodeWithText("St 15 / St 6").performScrollTo().performClick()
+        compose.onNodeWithText("Use stop").performClick()
         screenshot("bus-form")
         compose.onNodeWithText("Apply").performClick()
         compose.runOnIdle {
