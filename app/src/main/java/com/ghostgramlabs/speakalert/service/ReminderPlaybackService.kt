@@ -16,6 +16,8 @@ import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
 import android.speech.tts.TextToSpeech
+import com.ghostgramlabs.speakalert.transit.M2GoogleLookup
+import com.ghostgramlabs.speakalert.transit.M2Timetable
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -534,7 +536,8 @@ class ReminderPlaybackService : Service(), TextToSpeech.OnInitListener, SensorEv
                 } else if (ttsText != null) {
                     isTtsMode = true
                     FileLogger.log("SERVICE: Speaking TTS")
-                    speakTts(ttsText, title, id)
+                    val message = if (ttsText == M2Timetable.TOKEN) M2GoogleLookup.announce(this@ReminderPlaybackService) else ttsText
+                    speakTts(message, title, id)
                 } else {
                     FileLogger.log("SERVICE: No audio or text provided, stopping")
                     stopSelf()

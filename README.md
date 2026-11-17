@@ -57,8 +57,9 @@ hear it even when the phone is in your pocket or across the room.
   the week. This applies to active and repeating voice reminders too.
 - **12 languages.** English, Spanish, Hindi, Arabic, Portuguese (Brazil), Russian, Vietnamese,
   Bengali, Telugu, Tamil, Greek and Malayalam, with right-to-left layout support.
-- **Fully offline.** No account, no analytics, no network calls for reminders. Data stays on
-  the device.
+- **M2 bus announcements.** Choose **M2 bus · Weekdays at 4:50 PM** in a new reminder, then save. At playback, SpeakAlert looks up the next M2 from Al Hayal St / Tawjeeh Integrated Services (stop 11700) in the [Abu Dhabi Mobility timetable](https://admobility.gov.ae/ckfinder/userfiles/files/BusServiceM2.pdf) dated 20 March 2026. You can edit the reminder time or repeat days.
+- **Optional Google Maps estimates.** In an M2 reminder, tap **Use Google Maps estimates** to enter a Routes API key from a billing-enabled Google Cloud project. Restrict the key to the Routes API and your Android package and signing certificate. Only the fixed bus trip is sent to Google. Route estimates can include scheduled times. If Google has no matching M2 trip or the phone is offline, SpeakAlert reads the timetable. The key stays in the app's private, backup-excluded storage and can be removed in the same dialog.
+- **Offline reminders.** Scheduling, recordings, and timetable announcements work without an account or a network connection.
 
 ## Shake recording
 

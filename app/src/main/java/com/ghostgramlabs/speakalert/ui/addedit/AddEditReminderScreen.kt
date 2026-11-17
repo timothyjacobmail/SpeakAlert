@@ -1,6 +1,9 @@
 package com.ghostgramlabs.speakalert.ui.addedit
 
 import android.Manifest
+import com.ghostgramlabs.speakalert.transit.M2Timetable
+import com.ghostgramlabs.speakalert.transit.M2ReminderOptions
+import java.time.Instant
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -289,6 +292,18 @@ fun AddEditReminderScreen(
                 )
 
             SectionCard(title = stringResource(R.string.ae_section_content)) {
+                if (reminderId == -1L && uiState.title.isBlank() && uiState.reminderText.isBlank() &&
+                    uiState.recordedAudioPath == null && !uiState.isRecording) {
+                    OutlinedButton(onClick = {
+                        viewModel.updateTitle(M2Timetable.TITLE)
+                        viewModel.setFollowUpCheckMinutes(0)
+                        viewModel.setLoopPlayback(false)
+                        viewModel.updateReminderText(M2Timetable.TOKEN)
+                        viewModel.setTriggerTime(M2Timetable.nextWeekdayAlarm(Instant.now()).toEpochMilli())
+                        viewModel.setRecurrence(com.ghostgramlabs.speakalert.domain.models.RecurrenceModel.Weekly(M2Timetable.weekdays))
+                    }) { Text("M2 bus · Weekdays at 4:50 PM") }
+                }
+                if (uiState.reminderText == M2Timetable.TOKEN) M2ReminderOptions()
                 Text(
                     text = stringResource(R.string.ae_content_desc),
                     style = MaterialTheme.typography.bodySmall,

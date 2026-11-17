@@ -6,6 +6,8 @@ import com.ghostgramlabs.speakalert.domain.models.RecurrenceModel.*
 import com.ghostgramlabs.speakalert.util.DateUtils
 import com.google.gson.Gson
 import java.util.Calendar
+import java.util.TimeZone
+import com.ghostgramlabs.speakalert.transit.M2Timetable
 
 object RecurrenceUtils {
 
@@ -58,10 +60,13 @@ object RecurrenceUtils {
             }
         } ?: return null
 
+        val weeklyZone = if (reminder.reminderText == M2Timetable.TOKEN) TimeZone.getTimeZone(M2Timetable.zone)
+            else TimeZone.getDefault()
+
         // Calculate next basic trigger
         var nextTrigger = when (model) {
             is RecurrenceModel.Daily -> computeNextDaily(reminder.nextTriggerAt, fromTime)
-            is RecurrenceModel.Weekly -> computeNextWeekly(reminder.nextTriggerAt, model, fromTime)
+            is RecurrenceModel.Weekly -> computeNextWeekly(reminder.nextTriggerAt, model, fromTime, weeklyZone)
             is RecurrenceModel.Monthly -> computeNextMonthly(reminder.nextTriggerAt, model, fromTime)
             is RecurrenceModel.Yearly -> computeNextYearly(reminder.nextTriggerAt, model, fromTime)
             is RecurrenceModel.Custom -> computeNextCustom(reminder.nextTriggerAt, model, fromTime)
@@ -85,7 +90,7 @@ object RecurrenceUtils {
              com.ghostgramlabs.speakalert.util.FileLogger.log("Recurrence: Result $nextTrigger <= $fromTime. Advancing again...")
              nextTrigger = when (model) {
                 is RecurrenceModel.Daily -> computeNextDaily(nextTrigger, fromTime + 1000)
-                is RecurrenceModel.Weekly -> computeNextWeekly(nextTrigger, model, fromTime + 1000)
+                is RecurrenceModel.Weekly -> computeNextWeekly(nextTrigger, model, fromTime + 1000, weeklyZone)
                 is RecurrenceModel.Monthly -> computeNextMonthly(nextTrigger, model, fromTime + 1000)
                 is RecurrenceModel.Yearly -> computeNextYearly(nextTrigger, model, fromTime + 1000)
                 is RecurrenceModel.Custom -> computeNextCustom(nextTrigger, model, fromTime + 1000)
@@ -142,9 +147,9 @@ object RecurrenceUtils {
     }
 
     // --- WEEKLY ---
-    private fun computeNextWeekly(baseTrigger: Long, rule: RecurrenceModel.Weekly, fromTime: Long): Long? {
-        val targetCal = Calendar.getInstance().apply { timeInMillis = baseTrigger }
-        val nowCal = Calendar.getInstance().apply { timeInMillis = fromTime }
+    private fun computeNextWeekly(baseTrigger: Long, rule: RecurrenceModel.Weekly, fromTime: Long, zone: TimeZone): Long? {
+        val targetCal = Calendar.getInstance(zone).apply { timeInMillis = baseTrigger }
+        val nowCal = Calendar.getInstance(zone).apply { timeInMillis = fromTime }
         
         // Check next 7 days
         for (i in 0..7) {
