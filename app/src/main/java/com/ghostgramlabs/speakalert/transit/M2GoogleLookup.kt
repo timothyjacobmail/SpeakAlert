@@ -33,23 +33,29 @@ internal object M2GoogleLookup {
         }
     }
 
-    suspend fun announce(context: Context): String = withContext(Dispatchers.IO) {
-        val estimate = try {
+    data class Result(val status: String, val estimate: Instant? = null)
+
+    suspend fun announce(context: Context): String = M2Timetable.announcement(Instant.now(), check(context).estimate)
+
+    suspend fun check(context: Context): Result = withContext(Dispatchers.IO) {
+        try {
             val file = keyFile(context)
-            if (file.isFile) request(context, android.util.AtomicFile(file).readFully().decodeToString()) else null
+            if (file.isFile) request(context, android.util.AtomicFile(file).readFully().decodeToString())
+            else Result("No key saved.")
         } catch (_: java.io.IOException) {
-            null
+            Result("Could not reach Google Maps. Check your connection and try again.")
+        } catch (_: java.util.concurrent.CancellationException) {
+            throw java.util.concurrent.CancellationException()
         } catch (_: RuntimeException) {
-            null
+            Result("Could not read the Maps response. Using the timetable.")
         }
-        M2Timetable.announcement(Instant.now(), estimate)
     }
 
     // Restrict the user's key in Google Cloud to Routes API and this Android package/certificate.
     @Suppress("DEPRECATION")
-    private fun request(context: Context, key: String): Instant? {
+    private fun request(context: Context, key: String): Result {
         val signatures = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures
-        val signer = signatures?.firstOrNull() ?: return null
+        val signer = signatures?.firstOrNull() ?: return Result("Could not verify app signature.")
         val sha1 = MessageDigest.getInstance("SHA-1").digest(signer.toByteArray()).joinToString("") { "%02X".format(it) }
         val connection = URL("https://routes.googleapis.com/directions/v2:computeRoutes").openConnection() as HttpsURLConnection
         try {
@@ -70,10 +76,20 @@ internal object M2GoogleLookup {
                 "languageCode" to "en", "regionCode" to "AE", "computeAlternativeRoutes" to true
             )
             connection.outputStream.use { it.write(Gson().toJson(body).toByteArray()) }
-            if (connection.responseCode != 200) return null
-            return connection.inputStream.bufferedReader().use { reader ->
+            val code = connection.responseCode
+            if (code != 200) {
+                val reason = connection.errorStream?.bufferedReader()?.use { reader ->
+                    runCatching { JsonParser.parseReader(reader).asJsonObject.getAsJsonObject("error")
+                        ?.getAsJsonArray("details")?.firstNotNullOfOrNull { it.asJsonObject.get("reason")?.asString }
+                    }.getOrNull()
+                }?.takeIf { it.matches(Regex("[A-Z_]{1,80}")) }
+                return Result("Google Maps returned HTTP $code" + (reason?.let { " ($it)" } ?: "") + ". Using the timetable.")
+            }
+            val estimate = connection.inputStream.bufferedReader().use { reader ->
                 selectEstimate(JsonParser.parseReader(reader).asJsonObject, Instant.now())
             }
+            return if (estimate == null) Result("Connected to Google Maps. No matching M2 departure returned for stop 11700. Using the timetable.")
+            else Result("Connected. " + M2Timetable.announcement(Instant.now(), estimate), estimate)
         } finally {
             connection.disconnect()
         }

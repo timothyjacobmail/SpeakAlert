@@ -3,6 +3,7 @@ package com.ghostgramlabs.speakalert.transit
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 
@@ -17,6 +18,19 @@ internal fun M2ReminderOptions() {
     Text("Al Hayal St / Tawjeeh Integrated Services · Stop 11700")
     TextButton(onClick = { open = true }) {
         Text(if (configured) "Google Maps lookup enabled" else "Use Google Maps estimates")
+    }
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf("") }
+    var checking by remember { mutableStateOf(false) }
+    if (configured) {
+        TextButton(enabled = !checking, onClick = {
+            checking = true
+            scope.launch {
+                try { status = M2GoogleLookup.check(context).status }
+                finally { checking = false }
+            }
+        }) { Text(if (checking) "Checking Google Maps…" else "Test connection") }
+        if (status.isNotEmpty()) Text(status)
     }
     if (open) {
         fun close() { draft = ""; error = false; open = false }
@@ -44,6 +58,7 @@ internal fun M2ReminderOptions() {
                 TextButton(enabled = draft.isNotBlank(), onClick = {
                     try {
                         M2GoogleLookup.setKey(context, draft)
+                        status = "Key saved on this phone. Tap Test connection to verify it."
                         configured = true
                         close()
                     } catch (_: java.io.IOException) { error = true }
