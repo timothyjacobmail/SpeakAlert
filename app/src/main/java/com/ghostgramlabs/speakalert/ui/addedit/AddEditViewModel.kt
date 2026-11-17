@@ -598,7 +598,8 @@ class AddEditViewModel(
         val hasAudio = !state.recordedAudioPath.isNullOrBlank()
         val hasText = state.reminderText.isNotBlank()
 
-        if (!hasAudio && !hasText) {
+        if ((!hasAudio && !hasText) || (com.ghostgramlabs.speakalert.transit.BusAlert.isToken(state.reminderText) &&
+                com.ghostgramlabs.speakalert.transit.BusAlert.decode(state.reminderText) == null)) {
             _uiState.value = _uiState.value.copy(showError = true)
             return
         }

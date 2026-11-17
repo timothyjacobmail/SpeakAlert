@@ -53,7 +53,7 @@ internal fun buildReminderAlertPayload(
     val followUpMessage = buildFollowUpMessage(reminder, strings)
     val message = when {
         isFollowUpTrigger -> followUpMessage
-        !reminder.reminderText.isNullOrBlank() -> reminder.reminderText
+        !reminder.reminderText.isNullOrBlank() -> com.ghostgramlabs.speakalert.transit.BusAlert.display(reminder.reminderText)!!
         hasAudioConfigured && !hasPlayableAudio -> strings.audioUnavailable
         else -> strings.tapToView
     }

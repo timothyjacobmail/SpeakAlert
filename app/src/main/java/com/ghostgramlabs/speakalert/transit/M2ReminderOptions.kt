@@ -8,14 +8,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 @Composable
-internal fun M2ReminderOptions() {
+internal fun M2ReminderOptions(journey: BusJourney = BusAlert.default().journeys.first()) {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
     var configured by remember { mutableStateOf(M2GoogleLookup.configured(context)) }
     var draft by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
 
-    Text("Al Hayal St / Tawjeeh Integrated Services · Stop 11700")
+    Text("Google Maps key · Shared by all bus alerts")
     TextButton(onClick = { open = true }) {
         Text(if (configured) "Google Maps lookup enabled" else "Use Google Maps estimates")
     }
@@ -26,7 +26,7 @@ internal fun M2ReminderOptions() {
         TextButton(enabled = !checking, onClick = {
             checking = true
             scope.launch {
-                try { status = M2GoogleLookup.check(context).status }
+                try { status = BusGoogleLookup.check(context, journey).status }
                 finally { checking = false }
             }
         }) { Text(if (checking) "Checking Google Maps…" else "Test connection") }
@@ -39,7 +39,7 @@ internal fun M2ReminderOptions() {
             title = { Text("Google Maps estimates") },
             text = {
                 Column {
-                    Text("Optional. Supply your own Routes API key to check this bus trip with Google when the reminder plays. Google may bill your project. The official timetable is used when an estimate is unavailable.")
+                    Text("Use a Routes API key for Google bus estimates when alerts play. Google may bill your project. The key is shared by all bus alerts. Only the original M2 preset has an offline timetable fallback.")
                     OutlinedTextField(
                         value = draft, onValueChange = { draft = it; error = false },
                         label = { Text("Routes API key") }, singleLine = true,
@@ -51,7 +51,7 @@ internal fun M2ReminderOptions() {
                         M2GoogleLookup.setKey(context, "")
                         configured = false
                         close()
-                    }) { Text("Use timetable only") }
+                    }) { Text("Remove key") }
                 }
             },
             confirmButton = {

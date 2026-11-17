@@ -536,7 +536,8 @@ class ReminderPlaybackService : Service(), TextToSpeech.OnInitListener, SensorEv
                 } else if (ttsText != null) {
                     isTtsMode = true
                     FileLogger.log("SERVICE: Speaking TTS")
-                    val message = if (ttsText == M2Timetable.TOKEN) M2GoogleLookup.announce(this@ReminderPlaybackService) else ttsText
+                    val message = if (com.ghostgramlabs.speakalert.transit.BusAlert.isToken(ttsText))
+                        com.ghostgramlabs.speakalert.transit.BusGoogleLookup.announce(this@ReminderPlaybackService, ttsText) else ttsText
                     speakTts(message, title, id)
                 } else {
                     FileLogger.log("SERVICE: No audio or text provided, stopping")

@@ -126,7 +126,7 @@ private fun buildMissedDisplayTitle(missed: MissedReminderEntity): String {
         .takeIf { it.isNotEmpty() && !it.isDefaultAppDisplayName() }
     if (userTitle != null) return userTitle
 
-    val textFallback = missed.reminderText
+    val textFallback = com.ghostgramlabs.speakalert.transit.BusAlert.display(missed.reminderText)
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
         ?.let { text ->

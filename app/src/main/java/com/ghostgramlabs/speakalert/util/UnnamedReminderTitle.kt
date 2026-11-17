@@ -14,8 +14,8 @@ internal fun reminderDisplayTitle(title: String?, text: String?, fallback: Strin
         title.equals("Voice reminder", ignoreCase = true) || title.isDefaultAppDisplayName()
     if (!title.isNullOrBlank() && !legacy) return title
     if (!text.isNullOrBlank()) {
-        val words = text.trim().split(Regex("\\s+"))
-        return if (words.size > 10) words.take(10).joinToString(" ") + "..." else text
+        val words = com.ghostgramlabs.speakalert.transit.BusAlert.display(text)!!.trim().split(Regex("\\s+"))
+        return if (words.size > 10) words.take(10).joinToString(" ") + "..." else com.ghostgramlabs.speakalert.transit.BusAlert.display(text)!!
     }
     return fallback
 }

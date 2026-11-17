@@ -2,7 +2,8 @@ package com.ghostgramlabs.speakalert.ui.addedit
 
 import android.Manifest
 import com.ghostgramlabs.speakalert.transit.M2Timetable
-import com.ghostgramlabs.speakalert.transit.M2ReminderOptions
+import com.ghostgramlabs.speakalert.transit.BusAlert
+import com.ghostgramlabs.speakalert.transit.BusReminderOptions
 import java.time.Instant
 import android.content.Intent
 import android.net.Uri
@@ -80,13 +81,15 @@ fun AddEditReminderScreen(
     viewModel: AddEditViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val busAlert = remember(uiState.reminderText) { BusAlert.decode(uiState.reminderText) }
+    val isBusAlert = BusAlert.isToken(uiState.reminderText)
     // Hidden preferences simplify new reminders, but never conceal data already attached to the
     // reminder being edited.
-    val showVoiceRecordingSection = uiState.showVoiceRecordingSection ||
+    val showVoiceRecordingSection = (uiState.showVoiceRecordingSection && !isBusAlert) ||
         (!uiState.recordedAudioPath.isNullOrBlank() && !uiState.isCustomAudioFile)
-    val showAudioFileSection = uiState.showAudioFileSection ||
+    val showAudioFileSection = (uiState.showAudioFileSection && !isBusAlert) ||
         (!uiState.recordedAudioPath.isNullOrBlank() && uiState.isCustomAudioFile)
-    val showTypedReminderSection = uiState.showTypedReminderSection || uiState.reminderText.isNotBlank()
+    val showTypedReminderSection = !isBusAlert && (uiState.showTypedReminderSection || uiState.reminderText.isNotBlank())
     val showShortLabelSection = uiState.showShortLabelSection || uiState.title.isNotBlank()
     val context = LocalContext.current
     var showUnsavedDialog by remember { mutableStateOf(false) }
@@ -295,21 +298,24 @@ fun AddEditReminderScreen(
                 if (reminderId == -1L && uiState.title.isBlank() && uiState.reminderText.isBlank() &&
                     uiState.recordedAudioPath == null && !uiState.isRecording) {
                     OutlinedButton(onClick = {
-                        viewModel.updateTitle(M2Timetable.TITLE)
+                        viewModel.updateTitle("Bus arrivals")
                         viewModel.setFollowUpCheckMinutes(0)
                         viewModel.setLoopPlayback(false)
-                        viewModel.updateReminderText(M2Timetable.TOKEN)
+                        viewModel.updateReminderText(BusAlert.encode(BusAlert.default()))
                         viewModel.setTriggerTime(M2Timetable.nextWeekdayAlarm(Instant.now()).toEpochMilli())
                         viewModel.setRecurrence(com.ghostgramlabs.speakalert.domain.models.RecurrenceModel.Weekly(M2Timetable.weekdays))
-                    }) { Text("M2 bus · Weekdays at 4:50 PM") }
+                    }) { Text("Bus alerts · Choose stops and lines") }
                 }
-                if (uiState.reminderText == M2Timetable.TOKEN) M2ReminderOptions()
+                busAlert?.let { alert -> BusReminderOptions(alert) { viewModel.updateReminderText(BusAlert.encode(it)) } }
+                if (isBusAlert && !uiState.recordedAudioPath.isNullOrBlank()) Text(
+                    "Attached audio plays instead of a bus lookup. Remove it below to hear bus updates.",
+                    style = MaterialTheme.typography.bodySmall)
                 Text(
                     text = stringResource(R.string.ae_content_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (!showVoiceRecordingSection && !showAudioFileSection && !showTypedReminderSection) {
+                if (!isBusAlert && !showVoiceRecordingSection && !showAudioFileSection && !showTypedReminderSection) {
                     Text(
                         text = stringResource(R.string.ae_no_content_sections),
                         style = MaterialTheme.typography.bodyMedium,

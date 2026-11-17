@@ -16,6 +16,8 @@ import javax.net.ssl.HttpsURLConnection
 internal object M2GoogleLookup {
     private fun keyFile(context: Context) = File(context.noBackupFilesDir, "m2-routes-key")
     fun configured(context: Context) = keyFile(context).isFile
+    internal fun readKey(context: Context): String? = keyFile(context).takeIf { it.isFile }
+        ?.let { android.util.AtomicFile(it).readFully().decodeToString() }
 
     fun setKey(context: Context, value: String) {
         val file = android.util.AtomicFile(keyFile(context))

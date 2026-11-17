@@ -60,7 +60,7 @@ object RecurrenceUtils {
             }
         } ?: return null
 
-        val weeklyZone = if (reminder.reminderText == M2Timetable.TOKEN) TimeZone.getTimeZone(M2Timetable.zone)
+        val weeklyZone = if (com.ghostgramlabs.speakalert.transit.BusAlert.isToken(reminder.reminderText)) TimeZone.getTimeZone(M2Timetable.zone)
             else TimeZone.getDefault()
 
         // Calculate next basic trigger

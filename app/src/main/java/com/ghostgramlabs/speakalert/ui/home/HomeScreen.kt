@@ -1061,7 +1061,7 @@ fun MissedReminderItem(
         if (userTitle != null) {
             userTitle
         } else {
-            val textFallback = missed.reminderText
+            val textFallback = com.ghostgramlabs.speakalert.transit.BusAlert.display(missed.reminderText)
                 ?.trim()
                 ?.takeIf { it.isNotEmpty() }
                 ?.let { text ->
@@ -1160,7 +1160,7 @@ fun MissedReminderItem(
                             )
                         ) {
                             Text(
-                                text = missed.reminderText,
+                                text = com.ghostgramlabs.speakalert.transit.BusAlert.display(missed.reminderText).orEmpty(),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(12.dp)
