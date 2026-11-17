@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        com.ghostgramlabs.speakalert.recorderimport.RecorderImportSettings.restore(this)
         (application as VoiceReminderApp).applicationScope.launch {
             runCatching { com.ghostgramlabs.speakalert.data.retention.RecordedReminderExpiryWorker.enqueueSweep(this@MainActivity) }
                 .onFailure { android.util.Log.w("RecordingExpiry", "Could not refresh recording retention", it) }

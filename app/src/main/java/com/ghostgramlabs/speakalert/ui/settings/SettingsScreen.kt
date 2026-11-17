@@ -215,6 +215,7 @@ fun SettingsScreen(
                     Text(stringResource(R.string.quick_action_instructions), style = MaterialTheme.typography.bodySmall)
                 }
             }
+            com.ghostgramlabs.speakalert.recorderimport.RecorderImportSettingsCard()
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Text(stringResource(R.string.recording_retention_title), style = MaterialTheme.typography.titleMedium)

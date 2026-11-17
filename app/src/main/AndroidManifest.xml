@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -21,6 +23,10 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <queries>
+        <package android:name="com.vivo.soundrecorder" />
+    </queries>
 
     <application
         android:name=".VoiceReminderApp"
@@ -45,6 +51,27 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.SpeakAlert" />
+
+        <activity
+            android:name=".recorderimport.RecorderImportSettingsActivity"
+            android:label="@string/recorder_import_title"
+            android:exported="true"
+            android:theme="@style/Theme.SpeakAlert" />
+
+        <service
+            android:name=".recorderimport.RecorderMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled, notification-visible monitoring of completed vivo Recorder audio files to create timely voice reminders while the screen is off. No microphone capture or continuous polling." />
+        </service>
+
+        <receiver android:name=".recorderimport.RecorderImportRestartReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name=".quickrecord.QuickActionLauncherActivity"

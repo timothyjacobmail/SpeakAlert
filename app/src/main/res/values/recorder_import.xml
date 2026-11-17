@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recorder_import_title">Recorder reminders</string>
+    <string name="recorder_import_description">Automatically remind every new vivo Recorder recording 10 minutes after it is saved, including recordings started with Volume Down.</string>
+    <string name="recorder_import_originals">Existing recordings and recordings saved while this is off are ignored. Turning this off stops monitoring; reminders already created stay scheduled. Originals stay in Recorder; SpeakAlert’s copies expire after one week.</string>
+    <string name="recorder_import_background">Requires audio and notification access. A silent ongoing notification keeps the monitor active while the screen is off. Allow SpeakAlert to run in the background in vivo’s battery settings.</string>
+    <string name="recorder_import_unsupported">This integration requires Android 10 or newer and vivo Recorder.</string>
+    <string name="recorder_import_permissions">Allow audio and notifications to enable Recorder reminders.</string>
+    <string name="recorder_import_enable_failed">Could not enable Recorder reminders. Check audio access and try again.</string>
+    <string name="recorder_import_turn_off">Turn off</string>
+    <string name="recorder_import_restart">Restart monitor</string>
+    <string name="recorder_import_back">Back</string>
+    <string name="recorder_monitor_channel">Recorder monitoring</string>
+    <string name="recorder_confirm_channel">Recorder reminder confirmations</string>
+    <string name="recorder_monitor_waiting">Watching for new saved vivo Recorder recordings</string>
+    <string name="recorder_monitor_error">A recording could not be imported yet. Tap to check access or restart monitoring.</string>
+    <string name="recorder_import_confirm_title">Recording reminder set</string>
+    <string name="recorder_import_confirm">This recording will be reminded in 10 mins, at %1$s.</string>
+    <string name="recorder_import_late">This recording was found after its reminder time and is due now.</string>
+</resources>
