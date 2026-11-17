@@ -33,7 +33,7 @@ Full place/search links are parsed locally. Short `maps.app.goo.gl` and `goo.gl/
 
 Only explicit pin coordinates are imported; an `@latitude,longitude` map camera is not treated as a stop. Address text embedded in a place label is prefilled for review. When no explicit address is present, a single exact name match in the bundled catalogue can supply missing coordinates; ambiguous or partial matches cannot. Some links contain only a name or place ID. When coordinates cannot be read or matched, the user confirms the exact name and full address including city. Unreadable/offline short links offer manual entry. Directions links are rejected because their endpoint might be a different place. Imported stops use the normal custom-stop configuration and do not inherit the M2 offline timetable.
 
-Keep list/search and link import available without a native map key. Do not read the clipboard until the user chooses Paste link. Require review before using imported data, and never save the link itself as a stop address.
+Keep list/search and link import available without a native map key. Do not read the clipboard until the user chooses Paste link. Require review before using imported data, and never save the link itself as a stop address. Link fields use the URL keyboard with autocorrect disabled; Read link and Done dismiss the keyboard before review.
 
 ## Stop catalogue
 

@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -12,16 +14,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), onDismiss: () -> Unit, selected: (BusStop) -> Unit) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
-    val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     var link by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
@@ -37,11 +42,16 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), onDismiss: (
     }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Stop from Google Maps link") },
         text = {
+            val focusManager = LocalFocusManager.current
+            val keyboard = LocalSoftwareKeyboardController.current
+            fun finishTyping() { focusManager.clearFocus(force = true); keyboard?.hide() }
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("In Google Maps, open the bus stop, tap Share, then Copy link. Paste it here and review the stop before using it.")
                 OutlinedTextField(link, { changeLink(it) }, label = { Text("Google Maps share link") },
-                    enabled = !busy, modifier = Modifier.fillMaxWidth(), maxLines = 3)
+                    enabled = !busy, modifier = Modifier.fillMaxWidth(), maxLines = 3,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrect = false, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { finishTyping() }))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(enabled = !busy, onClick = {
                         val copied = clipboard.getText()?.text
@@ -54,7 +64,7 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), onDismiss: (
                     }) { Text("Open Google Maps") }
                 }
                 OutlinedButton(enabled = link.isNotBlank() && !busy, onClick = {
-                    focusManager.clearFocus()
+                    finishTyping()
                     scope.launch {
                         busy = true; message = null
                         try {
@@ -74,12 +84,16 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), onDismiss: (
                 message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 if (review) {
                     OutlinedTextField(name, { name = it.take(180) }, label = { Text("Boarding-stop name") },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { finishTyping() }))
                     if (lat != null && lon != null) {
                         Text("Pin: $lat, $lon", style = MaterialTheme.typography.bodySmall)
                     } else {
                         OutlinedTextField(address, { address = it.take(300) },
-                            label = { Text("Full stop address, including city") }, modifier = Modifier.fillMaxWidth())
+                            label = { Text("Full stop address, including city") }, modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { finishTyping() }))
                     }
                     Text("Use the name shown for the bus stop, not a nearby business. This only selects a stop; the bus line and direction are set next.",
                         style = MaterialTheme.typography.bodySmall)
