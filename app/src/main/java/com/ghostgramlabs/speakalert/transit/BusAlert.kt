@@ -10,11 +10,15 @@ import kotlin.math.*
 
 @Keep
 data class BusStop(val id: String, val name: String, val address: String,
-    val latitude: Double? = null, val longitude: Double? = null, val arabicName: String = "") {
+    val latitude: Double? = null, val longitude: Double? = null, val arabicName: String = "", val placeId: String? = null) {
     val codeLabel: String get() = if (id.startsWith("custom-")) "Custom stop" else "Stop $id"
-    fun valid() = id.isNotBlank() && id.length <= 80 && name.isNotBlank() && name.length <= 180 && address.isNotBlank() && address.length <= 300 &&
+    fun valid() = id.isNotBlank() && id.length <= 80 && name.isNotBlank() && name.length <= 180 && (address.isNotBlank() || validPlaceId(placeId)) && address.length <= 300 &&
+        (placeId == null || validPlaceId(placeId)) &&
         ((latitude == null && longitude == null) || (latitude != null && longitude != null &&
             latitude.isFinite() && longitude.isFinite() && latitude in -90.0..90.0 && longitude in -180.0..180.0))
+    companion object {
+        fun validPlaceId(value: String?) = value != null && value.matches(Regex("[A-Za-z0-9_-]{1,2048}"))
+    }
 }
 
 @Keep

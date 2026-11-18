@@ -208,7 +208,10 @@ internal fun BusStopPicker(
         dismissButton = { TextButton(onClick = {
             val stop = pending ?: initialStop
             val target = if (stop.latitude != null && stop.longitude != null) "${stop.latitude},${stop.longitude}" else stop.address
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/?api=1&query=" + Uri.encode(target)))) }
+            val url = if (BusStop.validPlaceId(stop.placeId))
+                "https://www.google.com/maps/search/?api=1&query=" + Uri.encode(stop.name) + "&query_place_id=" + Uri.encode(stop.placeId)
+                else "https://www.google.com/maps/search/?api=1&query=" + Uri.encode(target)
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
         }) { Text("Open in Maps") } })
 }
 

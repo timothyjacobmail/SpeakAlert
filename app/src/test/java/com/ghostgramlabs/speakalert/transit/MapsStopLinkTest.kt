@@ -25,6 +25,13 @@ class MapsStopLinkTest {
         assertFalse(MapsStopLink.fillFromCatalogue(draft.copy(name = "Tawjeeh"), listOf(known)).hasCoordinates)
         assertFalse(MapsStopLink.fillFromCatalogue(draft.copy(address = "Another city"), listOf(known)).hasCoordinates)
     }
+    @Test fun suppliedSultanBinMohammedStopLinkReadsTheBoardingPinInsteadOfTheCamera() {
+        val url = "https://www.google.com/maps/place/Sultan+Bin+Mohammed+Al+Qubaisi+St+%2F+Al+Raha+St+8/@24.3739101,54.5126362,17.56z/data=!4m6!3m5!1s0x3e5e40d62d5f261d:0xc1d3f7d62041beb7!8m2!3d24.3730985!4d54.5134716!16s%2Fg%2F11rwpmxm7t"
+        val draft = MapsStopLink.resolve("https://maps.app.goo.gl/TFuHrBFJaPGQW3Fo6") { url }
+        assertEquals("Sultan Bin Mohammed Al Qubaisi St / Al Raha St 8", draft.name)
+        assertEquals(24.3730985, draft.latitude!!, 0.0000001)
+        assertEquals(54.5134716, draft.longitude!!, 0.0000001)
+    }
     @Test fun cameraPositionAloneIsNeverUsedAsTheStop() {
         val draft = MapsStopLink.resolve("https://www.google.com/maps/place/Bus+stop/@25,55,15z") { error("Network") }
         assertEquals("Bus stop", draft.name)

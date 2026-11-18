@@ -5,7 +5,9 @@ import java.net.URLDecoder
 
 /** Reads explicit place data only. A map camera position is not a boarding stop. */
 object MapsStopLink {
-    data class Draft(val name: String = "", val latitude: Double? = null, val longitude: Double? = null, val address: String = "") {
+    data class Draft(val name: String = "", val latitude: Double? = null, val longitude: Double? = null, val address: String = "",
+        val placeId: String? = null, val locationIssue: String? = null) {
+        val hasLocation: Boolean get() = hasCoordinates || BusStop.validPlaceId(placeId)
         val hasCoordinates: Boolean get() = latitude != null && longitude != null
     }
     private val number = "[-+]?(?:[0-9]+(?:\\.[0-9]+)?)"
@@ -61,7 +63,7 @@ object MapsStopLink {
     }
 
     fun fillFromCatalogue(draft: Draft, stops: List<BusStop>): Draft {
-        if (draft.hasCoordinates || draft.name.isBlank() || draft.address.isNotBlank()) return draft
+        if (draft.hasLocation || draft.name.isBlank() || draft.address.isNotBlank()) return draft
         val match = stops.filter { it.latitude != null && it.longitude != null &&
             it.name.trim().equals(draft.name.trim(), true) }.distinctBy { it.id }.singleOrNull() ?: return draft
         return draft.copy(latitude = match.latitude, longitude = match.longitude,

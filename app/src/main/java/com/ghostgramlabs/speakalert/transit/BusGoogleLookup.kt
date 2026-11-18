@@ -55,10 +55,7 @@ object BusGoogleLookup {
             connection.setRequestProperty("X-Android-Package", context.packageName)
             connection.setRequestProperty("X-Android-Cert", sha1)
             connection.setRequestProperty("X-Goog-FieldMask", "routes.legs.steps.transitDetails")
-            val stop = journey.stop
-            val origin = if (stop.latitude != null && stop.longitude != null)
-                mapOf("location" to mapOf("latLng" to mapOf("latitude" to stop.latitude, "longitude" to stop.longitude)))
-                else mapOf("address" to stop.address)
+            val origin = origin(journey.stop)
             val body = mapOf("origin" to origin, "destination" to mapOf("address" to journey.destination),
                 "travelMode" to "TRANSIT", "transitPreferences" to mapOf("allowedTravelModes" to listOf("BUS")),
                 "languageCode" to "en", "regionCode" to "AE", "computeAlternativeRoutes" to true)
@@ -71,6 +68,13 @@ object BusGoogleLookup {
             return if (estimate == null) Result("Connected. No matching first-leg bus ${journey.line} was returned at this stop. This is not a complete departure board.")
                 else Result("Connected. " + BusAlert.announcement(journey, estimate, Instant.now(), BusAlert(listOf(journey))), estimate)
         } finally { connection.disconnect() }
+    }
+
+    internal fun origin(stop: BusStop): Map<String, Any> = when {
+        BusStop.validPlaceId(stop.placeId) -> mapOf("placeId" to stop.placeId!!)
+        stop.latitude != null && stop.longitude != null ->
+            mapOf("location" to mapOf("latLng" to mapOf("latitude" to stop.latitude, "longitude" to stop.longitude)))
+        else -> mapOf("address" to stop.address)
     }
 
     fun selectEstimate(reply: JsonObject, journey: BusJourney, now: Instant): Instant? {

@@ -80,6 +80,34 @@ class BusAlertEditorTest {
         }
     }
 
+    @Test fun referenceOnlyStopCanBeUsedWithoutTypingAnAddressAndSurvivesRestoration() {
+        assumeTrue(Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish"))
+        var chosen: BusStop? = null
+        var requests = 0
+        val restore = androidx.compose.ui.test.junit4.StateRestorationTester(compose)
+        restore.setContent { VoiceReminderTheme {
+            MapsStopLinkDialog(initialText = "https://maps.app.goo.gl/u91FnqJ3EJKYwT536", autoRead = true,
+                readDraft = {
+                    requests++
+                    MapsStopLink.Draft(name = "Sultan Bin Mohammed Al Qubaisi St / Al Raha St 8",
+                        placeId = "ChIJHSZfLdZAXj4Rt75BINb308E")
+                }, onDismiss = {}) { chosen = it }
+        } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Exact Google Maps place linked").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Full stop address, including city").assertDoesNotExist()
+        compose.onNodeWithText("Use stop").assertIsEnabled()
+        restore.emulateSavedInstanceStateRestore()
+        compose.onNodeWithText("Exact Google Maps place linked").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertEquals(1, requests); assertNull(chosen) }
+        screenshot("reference-only-stop")
+        compose.onNodeWithText("Use stop").performClick()
+        compose.runOnIdle {
+            assertTrue(chosen!!.valid())
+            assertEquals("ChIJHSZfLdZAXj4Rt75BINb308E", chosen!!.placeId)
+            assertEquals("", chosen!!.address)
+        }
+    }
+
     @Test fun chooseAStopAddAnotherLineAndCustomizeSpeechWithoutLosingExistingBus() {
         assumeTrue(Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish"))
         val state = mutableStateOf(BusAlert.default())

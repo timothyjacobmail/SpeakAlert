@@ -25,6 +25,7 @@ import java.util.UUID
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText: String = "", autoRead: Boolean = false,
+    readDraft: (suspend (String) -> MapsStopLink.Draft)? = null,
     onDismiss: () -> Unit, selected: (BusStop) -> Unit) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
@@ -34,21 +35,25 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText:
     var address by rememberSaveable { mutableStateOf("") }
     var lat by rememberSaveable { mutableStateOf<Double?>(null) }
     var lon by rememberSaveable { mutableStateOf<Double?>(null) }
+    var placeId by rememberSaveable { mutableStateOf<String?>(null) }
     var review by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     fun changeLink(text: String) {
         link = text.take(10_000)
-        review = false; name = ""; address = ""; lat = null; lon = null; message = null
+        review = false; name = ""; address = ""; lat = null; lon = null; placeId = null; message = null
     }
     fun readLink() {
         scope.launch {
             busy = true; message = null
             try {
-                val draft = MapsStopLink.fillFromCatalogue(MapsStopLinkResolver.read(link), stops)
-                name = draft.name; address = draft.address; lat = draft.latitude; lon = draft.longitude
-                message = if (draft.hasCoordinates) "Location found from the link or an exact catalogue match. Check the boarding-stop name."
-                    else "This link does not include a pin. Check the name and full stop address below."
+                val draft = readDraft?.invoke(link) ?: MapsStopLinkResolver.read(link, context, stops)
+                name = draft.name; address = draft.address; lat = draft.latitude; lon = draft.longitude; placeId = draft.placeId
+                message = when {
+                    draft.placeId != null -> "Google Maps identified this exact stop. Check its boarding-stop name."
+                    draft.hasCoordinates -> "Location found from the link or an exact catalogue match. Check the boarding-stop name."
+                    else -> draft.locationIssue ?: "The stop\u2019s exact location could not be identified. Enter its full address below."
+                }
             } catch (e: CancellationException) { throw e }
             catch (e: IllegalArgumentException) {
                 message = e.message ?: "This link could not be read. Enter the stop details below."
@@ -97,6 +102,8 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText:
                         keyboardActions = KeyboardActions(onDone = { finishTyping() }))
                     if (lat != null && lon != null) {
                         Text("Pin: $lat, $lon", style = MaterialTheme.typography.bodySmall)
+                    } else if (BusStop.validPlaceId(placeId)) {
+                        Text("Exact Google Maps place linked", style = MaterialTheme.typography.bodySmall)
                     } else {
                         OutlinedTextField(address, { address = it.take(300) },
                             label = { Text("Full stop address, including city") }, modifier = Modifier.fillMaxWidth(),
@@ -110,9 +117,9 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText:
         },
         confirmButton = {
             TextButton(enabled = review && !busy && name.isNotBlank() &&
-                ((lat != null && lon != null) || address.isNotBlank()), onClick = {
+                ((lat != null && lon != null) || BusStop.validPlaceId(placeId) || address.isNotBlank()), onClick = {
                 val location = if (lat != null && lon != null) "$lat, $lon" else address.trim()
-                selected(BusStop("custom-" + UUID.randomUUID(), name.trim(), location, lat, lon))
+                selected(BusStop("custom-" + UUID.randomUUID(), name.trim(), location, lat, lon, placeId = placeId))
             }) { Text("Use stop") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
