@@ -37,6 +37,16 @@ Keep list/search and link import available without a native map key. Do not read
 
 Reference resolution requires Maps Experience agent tools access on the existing key. It performs at most one request per read attempt, only for links that lack an exact location. Google currently lists `resolveMapsUrls` at $0 under the IDs Only SKU; demo-key quotas still apply. No credentials are added to URLs or logs. Completed review state, including the place ID, survives rotation without another lookup. See [Resolution API authentication, quotas and pricing](https://developers.google.com/maps/ai/maps-experience-agent-tools/resolution-api) and [using place IDs with Routes](https://developers.google.com/maps/documentation/places/web-service/place-id).
 
+## Choose the destination from a Maps link
+
+In Add/Edit bus choose **Choose destination from Maps link**. Copy a place or stop link from Google Maps, paste, Read link, review it and **Use destination**. The destination can be a bus stop, mall, landmark or other place reached in the wanted direction. Share the destination place itself, not a directions route containing multiple endpoints.
+
+The same bounded importer handles full/short links and reference-only places. It uses no key for embedded coordinates; otherwise it makes at most one on-demand resolution request per read attempt. Destination import does not change the boarding stop, bus line or schedule. Cancel leaves the previous destination intact.
+
+Store the friendly destination label separately from its optional exact location. Routes receives that place ID, coordinates or full address as its destination waypoint. Spoken directions use only the friendly label. Editing the destination text clears the linked location and switches to a manual address. Restoring a draft retains the link, and choosing the original M2 preset clears it. A linked destination never inherits the offline M2 timetable, even if its label resembles the original preset. Same-name destinations with different identities remain distinct lookups.
+
+BusDestinationLinkTest covers backup compatibility, exact destination waypoints, speech, deduplication and timetable isolation. BusDestinationLinkEditorTest checks confirmation, Cancel, boarding-stop preservation, restoration and switching back to manual text. [Google Routes waypoints](https://developers.google.com/maps/documentation/routes/reference/rest/v2/Waypoint) support the same identity/address/coordinate forms for both endpoints.
+
 ## Share directly from Google Maps
 
 Open a boarding stop in Google Maps, tap Share, then choose SpeakAlert (use More/All apps if needed). The standard exported MapsBusShareActivity accepts ACTION_SEND with text/plain. It validates a bounded Google Maps URL before resolving it; unrelated text and directions show help. Subject/title text can supply a missing place name. Android filters share targets by MIME type, so SpeakAlert may also be offered for other text shares.

@@ -130,6 +130,11 @@ internal fun BusJourneyDialog(initial: BusJourney?, stops: List<BusStop>, knownL
     var stop by rememberSaveable(stateSaver = BusStopDraftSaver) { mutableStateOf(initial?.stop ?: BusAlert.defaultStop) }
     var line by rememberSaveable { mutableStateOf(initial?.line.orEmpty()) }
     var destination by rememberSaveable { mutableStateOf(initial?.destination.orEmpty()) }
+    var destinationJson by rememberSaveable { mutableStateOf(initial?.destinationPlace?.let { Gson().toJson(it) }) }
+    val destinationPlace = remember(destinationJson) {
+        destinationJson?.let { runCatching { Gson().fromJson(it, BusStop::class.java).takeIf { item -> item.valid() } }.getOrNull() }
+    }
+    var destinationPicker by rememberSaveable { mutableStateOf(false) }
     var picker by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(title) },
@@ -150,22 +155,33 @@ internal fun BusJourneyDialog(initial: BusJourney?, stops: List<BusStop>, knownL
                         SuggestionChip(onClick = { line = code }, label = { Text(code) })
                     }
                 }
-                OutlinedTextField(value = destination, onValueChange = { destination = it.take(240); error = false },
+                OutlinedButton(onClick = { finishTyping(); destinationPicker = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Choose destination from Maps link")
+                }
+                OutlinedTextField(value = destination, onValueChange = { destination = it.take(240); destinationJson = null; error = false },
                     label = { Text("Destination / direction") }, minLines = 2,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { finishTyping() }),
                     isError = error && destination.isBlank(),
-                    supportingText = { Text("Enter a destination reached in this direction, including city. Google needs it to find a journey.") })
-                if (initial == null) TextButton(onClick = { stop = BusAlert.defaultStop; line = "M2"; destination = BusAlert.defaultDestination }) {
+                    supportingText = { Text(if (destinationPlace != null)
+                        "Google Maps destination linked. Editing this text switches to a manual destination."
+                        else "Enter a destination reached in this direction, including city, or choose a Google Maps link.") })
+                if (initial == null) TextButton(onClick = { stop = BusAlert.defaultStop; line = "M2"; destination = BusAlert.defaultDestination; destinationJson = null }) {
                     Text("Use original M2 preset")
                 }
                 if (error) Text("Enter a bus line and destination.", color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = { TextButton(onClick = {
-            val preset = stop == BusAlert.defaultStop && line.trim().equals("M2", true) && destination.trim() == BusAlert.defaultDestination
-            val journey = BusJourney(stop, line.trim().uppercase(), destination.trim(), initial?.enabled ?: true, offlineM2 = preset)
+            val preset = destinationPlace == null && stop == BusAlert.defaultStop && line.trim().equals("M2", true) && destination.trim() == BusAlert.defaultDestination
+            val journey = BusJourney(stop, line.trim().uppercase(), destination.trim(), initial?.enabled ?: true, offlineM2 = preset, destinationPlace = destinationPlace)
             if (journey.valid()) onApply(journey) else error = true
         }) { Text(confirmLabel) } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
     if (picker) BusStopPicker(stops.distinctBy { it.id }, initialStop = stop, onDismiss = { picker = false }) { stop = it; picker = false }
+    if (destinationPicker) MapsStopLinkDialog(isDestination = true, onDismiss = { destinationPicker = false }) {
+        destination = it.name
+        destinationJson = Gson().toJson(it)
+        error = false
+        destinationPicker = false
+    }
 }

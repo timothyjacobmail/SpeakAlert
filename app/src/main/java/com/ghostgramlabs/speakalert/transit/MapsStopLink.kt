@@ -34,7 +34,7 @@ object MapsStopLink {
                 (host == "maps.app.goo.gl" && path.length > 1) || (host == "goo.gl" && path.startsWith("/maps/")))) {
             "Use a Google Maps place or stop link."
         }
-        require(!path.startsWith("/maps/dir")) { "This is a directions link. Share the bus stop's place instead." }
+        require(!path.startsWith("/maps/dir")) { "This is a directions link. Share the place itself instead." }
         return uri
     }
 

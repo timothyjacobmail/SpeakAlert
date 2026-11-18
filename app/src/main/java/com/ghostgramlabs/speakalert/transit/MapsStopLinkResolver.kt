@@ -32,9 +32,9 @@ internal object MapsStopLinkResolver {
             MapsPlaceResolution.request(context, key, MapsStopLink.link(text).toASCIIString())
         } catch (e: java.util.concurrent.CancellationException) { throw e }
         catch (_: java.io.IOException) { MapsPlaceResolution.Result(issue =
-            "Could not retrieve this stop's location. Check your connection or enter the full address.") }
+            "Could not retrieve this place's location. Check your connection or enter the full address.") }
         catch (_: RuntimeException) { MapsPlaceResolution.Result(issue =
-            "Google's stop location could not be read. Retry or enter the full address.") }
+            "Google's place location could not be read. Retry or enter the full address.") }
         draft.copy(placeId = result.placeId, locationIssue = result.issue)
     }
 }

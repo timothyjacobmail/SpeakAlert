@@ -23,10 +23,11 @@ data class BusStop(val id: String, val name: String, val address: String,
 
 @Keep
 data class BusJourney(val stop: BusStop, val line: String, val destination: String,
-    val enabled: Boolean = true, val offlineM2: Boolean = false) {
+    val enabled: Boolean = true, val offlineM2: Boolean = false, val destinationPlace: BusStop? = null) {
     fun valid() = stop.valid() && line.isNotBlank() && line.length <= 24 &&
-        destination.isNotBlank() && destination.length <= 240
-    fun hasTimetable() = offlineM2 && stop == BusAlert.defaultStop && line.equals("M2", true) &&
+        destination.isNotBlank() && destination.length <= 240 &&
+        (destinationPlace == null || (destinationPlace.valid() && destination == destinationPlace.name))
+    fun hasTimetable() = destinationPlace == null && offlineM2 && stop == BusAlert.defaultStop && line.equals("M2", true) &&
         destination == BusAlert.defaultDestination
 }
 

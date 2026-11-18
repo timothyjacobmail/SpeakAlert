@@ -17,9 +17,7 @@ object BusGoogleLookup {
     data class Result(val status: String, val estimate: Instant? = null)
     suspend fun announce(context: Context, text: String): String {
         val alert = BusAlert.decode(text) ?: return "Bus alert settings could not be read. Please edit this reminder."
-        val active = alert.journeys.filter { it.enabled }.distinctBy {
-            listOf(it.stop.id, it.line.uppercase(), it.destination.lowercase())
-        }
+        val active = alert.journeys.filter { it.enabled }.distinctBy { lookupKey(it) }
         val checked = withTimeoutOrNull(25_000) {
             active.map { journey -> journey to check(context, journey) }
         }
@@ -56,7 +54,7 @@ object BusGoogleLookup {
             connection.setRequestProperty("X-Android-Cert", sha1)
             connection.setRequestProperty("X-Goog-FieldMask", "routes.legs.steps.transitDetails")
             val origin = origin(journey.stop)
-            val body = mapOf("origin" to origin, "destination" to mapOf("address" to journey.destination),
+            val body = mapOf("origin" to origin, "destination" to destination(journey),
                 "travelMode" to "TRANSIT", "transitPreferences" to mapOf("allowedTravelModes" to listOf("BUS")),
                 "languageCode" to "en", "regionCode" to "AE", "computeAlternativeRoutes" to true)
             connection.outputStream.use { it.write(Gson().toJson(body).toByteArray()) }
@@ -69,6 +67,12 @@ object BusGoogleLookup {
                 else Result("Connected. " + BusAlert.announcement(journey, estimate, Instant.now(), BusAlert(listOf(journey))), estimate)
         } finally { connection.disconnect() }
     }
+
+    internal fun destination(journey: BusJourney): Map<String, Any> =
+        journey.destinationPlace?.let { origin(it) } ?: mapOf("address" to journey.destination)
+
+    internal fun lookupKey(journey: BusJourney): List<Any> = listOf(journey.stop.id, journey.line.uppercase(),
+        journey.destinationPlace?.let { origin(it) } ?: journey.destination.lowercase())
 
     internal fun origin(stop: BusStop): Map<String, Any> = when {
         BusStop.validPlaceId(stop.placeId) -> mapOf("placeId" to stop.placeId!!)
