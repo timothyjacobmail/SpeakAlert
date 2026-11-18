@@ -17,16 +17,16 @@ object MapsStopLink {
         "google.ae", "www.google.ae", "maps.google.ae",
         "google.co.uk", "www.google.co.uk", "google.co.in", "www.google.co.in")
 
-    fun link(text: String): URI {
+    fun link(text: String, allowDirections: Boolean = false): URI {
         require(text.length <= 10_000) { "The link is too long." }
         val raw = Regex("https://[^\\s<>\\\"]+", RegexOption.IGNORE_CASE).find(text)?.value
             ?.trimEnd('.', ',', ';') ?: throw IllegalArgumentException("Paste a Google Maps HTTPS link.")
         return checked(runCatching { URI(raw) }.getOrElse {
             throw IllegalArgumentException("This link could not be read. Copy it again from Google Maps.")
-        })
+        }, allowDirections)
     }
 
-    private fun checked(uri: URI): URI {
+    private fun checked(uri: URI, allowDirections: Boolean = false): URI {
         val host = uri.host?.lowercase().orEmpty()
         val path = uri.path.orEmpty()
         require(uri.scheme.equals("https", true) && uri.userInfo == null && uri.port in listOf(-1, 443) &&
@@ -34,7 +34,7 @@ object MapsStopLink {
                 (host == "maps.app.goo.gl" && path.length > 1) || (host == "goo.gl" && path.startsWith("/maps/")))) {
             "Use a Google Maps place or stop link."
         }
-        require(!path.startsWith("/maps/dir")) { "This is a directions link. Share the place itself instead." }
+        require(allowDirections || !MapsDirectionsLink.isDirections(uri)) { "This is a directions link. Choose Import bus route in Bus alerts." }
         return uri
     }
 
@@ -42,7 +42,12 @@ object MapsStopLink {
 
     /** Redirects are validated before the caller makes another request. Full links need no network. */
     fun resolve(text: String, redirect: (URI) -> String?): Draft {
-        var uri = link(text)
+        val uri = expand(text, false, redirect)
+        return placeDraft(text, uri)
+    }
+
+    internal fun expand(text: String, allowDirections: Boolean, redirect: (URI) -> String?): URI {
+        var uri = link(text, allowDirections)
         if (isShort(uri)) {
             var hops = 0
             val visited = mutableSetOf<URI>()
@@ -50,10 +55,14 @@ object MapsStopLink {
                 require(visited.add(uri)) { "The short link could not be expanded. Enter the stop details below." }
                 val next = redirect(uri)
                     ?: throw IllegalArgumentException("The short link could not be expanded. Enter the stop details below.")
-                uri = checked(uri.resolve(next))
+                uri = checked(uri.resolve(next), allowDirections)
             }
             require(!isShort(uri)) { "The short link has too many redirects. Enter the stop details below." }
         }
+        return uri
+    }
+
+    internal fun placeDraft(text: String, uri: URI): Draft {
         return parse(uri).let { draft ->
             // Google Maps may share a place title on a separate line before the link.
             val title = text.lineSequence().takeWhile { !it.contains("https://", true) }

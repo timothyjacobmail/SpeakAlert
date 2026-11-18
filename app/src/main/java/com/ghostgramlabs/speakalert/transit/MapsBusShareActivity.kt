@@ -50,7 +50,7 @@ class MapsBusShareActivity : ComponentActivity() {
 private fun SharedStopDraft(sharedText: String?, close: () -> Unit) {
     if (sharedText == null) {
         AlertDialog(onDismissRequest = close, title = { Text("Share a Google Maps bus stop") },
-            text = { Text("Open the actual boarding stop in Google Maps, tap Share, then choose SpeakAlert. Directions and unrelated text cannot be imported as a stop.") },
+            text = { Text("In Google Maps, share a boarding stop or directions between two places, then choose SpeakAlert.") },
             confirmButton = { TextButton(onClick = close) { Text("Close") } })
         return
     }
@@ -75,6 +75,6 @@ private fun SharedStopDraft(sharedText: String?, close: () -> Unit) {
             title = "Bus line and direction", confirmLabel = "Continue", onDismiss = close,
             onApply = { alertText = BusAlert.encode(BusAlert(listOf(it))) })
         else -> MapsStopLinkDialog(stops = stops.orEmpty(), initialText = sharedText, autoRead = true,
-            onDismiss = close, selected = { stopJson = Gson().toJson(it) })
+            onRoute = { alertText = BusAlert.encode(BusAlert(listOf(it))) }, onDismiss = close, selected = { stopJson = Gson().toJson(it) })
     }
 }

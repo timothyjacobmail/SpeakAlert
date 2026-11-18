@@ -26,6 +26,7 @@ import java.util.UUID
 @Composable
 internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText: String = "", autoRead: Boolean = false,
     readDraft: (suspend (String) -> MapsStopLink.Draft)? = null, isDestination: Boolean = false,
+    routeOnly: Boolean = false, initialRoute: BusJourney? = null, onRoute: ((BusJourney) -> Unit)? = null,
     onDismiss: () -> Unit, selected: (BusStop) -> Unit) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
@@ -36,18 +37,29 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText:
     var lat by rememberSaveable { mutableStateOf<Double?>(null) }
     var lon by rememberSaveable { mutableStateOf<Double?>(null) }
     var placeId by rememberSaveable { mutableStateOf<String?>(null) }
-    var review by rememberSaveable { mutableStateOf(false) }
+    var routeText by rememberSaveable { mutableStateOf(initialRoute?.let { BusAlert.encode(BusAlert(listOf(it.copy(enabled = true)))) }) }
+    val route = remember(routeText) { BusAlert.decode(routeText)?.journeys?.singleOrNull() }
+    var lines by rememberSaveable { mutableStateOf(initialRoute?.line.orEmpty()) }
+    val reviewedRoute = route?.copy(line = lines.trim(), enabled = initialRoute?.enabled ?: true)
+    var review by rememberSaveable { mutableStateOf(initialRoute != null) }
     var busy by remember { mutableStateOf(false) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     fun changeLink(text: String) {
         link = text.take(10_000)
-        review = false; name = ""; address = ""; lat = null; lon = null; placeId = null; message = null
+        routeText = null; lines = ""; review = false; name = ""; address = ""; lat = null; lon = null; placeId = null; message = null
     }
     fun readLink() {
         scope.launch {
             busy = true; message = null
             try {
-                val draft = readDraft?.invoke(link) ?: MapsStopLinkResolver.read(link, context, stops)
+                val expanded = if (readDraft == null && onRoute != null) MapsStopLinkResolver.expand(link) else null
+                if (expanded != null && MapsDirectionsLink.isDirections(expanded)) {
+                    val imported = MapsDirectionsLink.parse(expanded)
+                    routeText = BusAlert.encode(BusAlert(listOf(imported)))
+                    return@launch
+                }
+                require(!routeOnly) { "This is a place link. Share directions between two places to import a bus route." }
+                val draft = readDraft?.invoke(link) ?: MapsStopLinkResolver.read(link, context, stops, expanded)
                 name = draft.name; address = draft.address; lat = draft.latitude; lon = draft.longitude; placeId = draft.placeId
                 message = when {
                     draft.placeId != null -> if (isDestination) "Google Maps identified this exact destination. Check its name."
@@ -67,7 +79,7 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText:
     LaunchedEffect(initialText) {
         if (autoRead && !review && link == initialText && link.isNotBlank()) readLink()
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (isDestination) "Destination from Google Maps link" else "Stop from Google Maps link") },
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (routeOnly || route != null) "Bus route from Google Maps" else if (isDestination) "Destination from Google Maps link" else "Stop from Google Maps link") },
         text = {
             val focusManager = LocalFocusManager.current
             val keyboard = LocalSoftwareKeyboardController.current
@@ -75,8 +87,9 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText:
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(when {
+                    routeOnly || route != null -> "Share or paste directions with a fixed starting point and destination. SpeakAlert checks for a bus itinerary when the reminder plays."
                     isDestination -> "In Google Maps, open the place or stop you are travelling toward, then Share and Copy link. Paste it here and review the destination."
-                    initialText.isNotBlank() -> "Shared from Google Maps. Review the boarding stop before continuing."
+                    initialText.isNotBlank() -> "Shared from Google Maps. Review the route or boarding stop before continuing."
                     else -> "In Google Maps, open the bus stop, tap Share, then Copy link. Paste it here and review the stop before using it."
                 })
                 OutlinedTextField(link, { changeLink(it) }, label = { Text("Google Maps share link") },
@@ -100,7 +113,16 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText:
                 }) { Text(if (busy) "Reading link…" else "Read link") }
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                if (review) {
+                if (route != null) {
+                    Text("From ${route.stop.name}")
+                    Text("To ${route.destination}")
+                    OutlinedTextField(lines, { lines = it.take(120) }, label = { Text("Bus lines in order (optional)") },
+                        placeholder = { Text("M2, 102") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        isError = reviewedRoute?.valid() == false,
+                        supportingText = { Text("Separate lines with commas to require that connection. Leave blank to use the earliest-arriving bus itinerary Google returns.") },
+                        keyboardOptions = KeyboardOptions(autoCorrect = false, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { finishTyping() }))
+                } else if (review && !routeOnly) {
                     OutlinedTextField(name, { name = it.take(180) }, label = { Text(if (isDestination) "Destination name" else "Boarding-stop name") },
                         modifier = Modifier.fillMaxWidth(), singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -122,7 +144,11 @@ internal fun MapsStopLinkDialog(stops: List<BusStop> = emptyList(), initialText:
             }
         },
         confirmButton = {
-            TextButton(enabled = review && !busy && name.isNotBlank() &&
+            if (onRoute != null && (routeOnly || reviewedRoute != null)) {
+                TextButton(enabled = !busy && reviewedRoute?.valid() == true, onClick = {
+                    reviewedRoute?.let(onRoute)
+                }) { Text("Use route") }
+            } else TextButton(enabled = review && !busy && name.isNotBlank() &&
                 ((lat != null && lon != null) || BusStop.validPlaceId(placeId) || address.isNotBlank()), onClick = {
                 val location = if (lat != null && lon != null) "$lat, $lon" else address.trim()
                 selected(BusStop("custom-" + UUID.randomUUID(), name.trim(), location, lat, lon, placeId = placeId))

@@ -23,8 +23,13 @@ data class BusStop(val id: String, val name: String, val address: String,
 
 @Keep
 data class BusJourney(val stop: BusStop, val line: String, val destination: String,
-    val enabled: Boolean = true, val offlineM2: Boolean = false, val destinationPlace: BusStop? = null) {
-    fun valid() = stop.valid() && line.isNotBlank() && line.length <= 24 &&
+    val enabled: Boolean = true, val offlineM2: Boolean = false, val destinationPlace: BusStop? = null,
+    val connectedRoute: Boolean = false) {
+    val linesInOrder get() = line.split(',').map { it.trim() }
+    val title get() = if (connectedRoute) "Bus route" + if (line.isBlank()) "" else " · ${linesInOrder.joinToString(" → ")}" else "Bus $line"
+    fun valid() = stop.valid() && (if (connectedRoute) destinationPlace != null && line.length <= 120 &&
+        (line.isEmpty() || (linesInOrder.size <= 8 && linesInOrder.all { it.length in 1..24 }))
+        else line.isNotBlank() && line.length <= 24) &&
         destination.isNotBlank() && destination.length <= 240 &&
         (destinationPlace == null || (destinationPlace.valid() && destination == destinationPlace.name))
     fun hasTimetable() = destinationPlace == null && offlineM2 && stop == BusAlert.defaultStop && line.equals("M2", true) &&
@@ -52,7 +57,7 @@ data class BusAlert(val journeys: List<BusJourney>, val readTime: Boolean = true
         }
         fun encode(alert: BusAlert): String {
             require(alert.valid())
-            val summary = alert.journeys.filter { it.enabled }.joinToString("; ") { "${it.line} at ${it.stop.name}" }
+            val summary = alert.journeys.filter { it.enabled }.joinToString("; ") { if (it.connectedRoute) "${it.title} from ${it.stop.name} to ${it.destination}" else "${it.line} at ${it.stop.name}" }
             return PREFIX + summary + MARKER + Gson().toJson(alert)
         }
         fun display(text: String?): String? = if (isToken(text) && text != M2Timetable.TOKEN)

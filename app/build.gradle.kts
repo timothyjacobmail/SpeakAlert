@@ -26,8 +26,8 @@ android {
         applicationId = "com.ghostgramlabs.speakalert"
         minSdk = 26
         targetSdk = 36
-        versionCode = 66
-        versionName = "2.0.45"
+        versionCode = 67
+        versionName = "2.0.46"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         buildConfigField("boolean", "HAS_MAPS_KEY", mapsApiKey.isNotEmpty().toString())
 

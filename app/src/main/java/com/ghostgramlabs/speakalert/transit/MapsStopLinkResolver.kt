@@ -8,9 +8,9 @@ import kotlinx.coroutines.withContext
 import javax.net.ssl.HttpsURLConnection
 
 internal object MapsStopLinkResolver {
-    suspend fun read(text: String, context: Context? = null, stops: List<BusStop> = emptyList()): MapsStopLink.Draft = withContext(Dispatchers.IO) {
+    suspend fun expand(text: String): java.net.URI = withContext(Dispatchers.IO) {
         val job = currentCoroutineContext()
-        val parsed = MapsStopLink.resolve(text) { uri ->
+        MapsStopLink.expand(text, allowDirections = true) { uri ->
             job.ensureActive()
             val connection = uri.toURL().openConnection() as HttpsURLConnection
             try {
@@ -22,6 +22,12 @@ internal object MapsStopLinkResolver {
                     connection.getHeaderField("Location") else null
             } finally { connection.disconnect() }
         }
+    }
+
+    suspend fun read(text: String, context: Context? = null, stops: List<BusStop> = emptyList(),
+        expanded: java.net.URI? = null): MapsStopLink.Draft = withContext(Dispatchers.IO) {
+        val job = currentCoroutineContext()
+        val parsed = MapsStopLink.placeDraft(text, expanded ?: expand(text))
         val draft = MapsStopLink.fillFromCatalogue(parsed, stops)
         if (draft.hasLocation || context == null) return@withContext draft
         val key = M2GoogleLookup.readKey(context)

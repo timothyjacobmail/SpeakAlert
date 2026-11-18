@@ -39,6 +39,7 @@ fun BusReminderOptions(alert: BusAlert, onChange: (BusAlert) -> Unit) {
     var editIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var adding by rememberSaveable { mutableStateOf(false) }
     var removing by rememberSaveable { mutableStateOf<Int?>(null) }
+    var importRoute by rememberSaveable { mutableStateOf(false) }
     val statuses = remember { mutableStateMapOf<String, String>() }
     var checking by remember { mutableStateOf<String?>(null) }
     val stops by produceState<List<BusStop>>(emptyList()) {
@@ -49,8 +50,8 @@ fun BusReminderOptions(alert: BusAlert, onChange: (BusAlert) -> Unit) {
     alert.journeys.forEachIndexed { index, journey ->
         OutlinedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Bus ${journey.line}", style = MaterialTheme.typography.titleMedium)
-                Text("${journey.stop.name} · ${journey.stop.codeLabel}")
+                Text(journey.title, style = MaterialTheme.typography.titleMedium)
+                Text(if (journey.connectedRoute) "From ${journey.stop.name}" else "${journey.stop.name} · ${journey.stop.codeLabel}")
                 Text("Toward ${journey.destination}")
                 if (alert.journeys.size > 1) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -62,7 +63,7 @@ fun BusReminderOptions(alert: BusAlert, onChange: (BusAlert) -> Unit) {
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { editIndex = index }) { Text("Edit bus") }
+                    TextButton(onClick = { editIndex = index }) { Text(if (journey.connectedRoute) "Edit route" else "Edit bus") }
                     TextButton(enabled = alert.journeys.size > 1 && (!journey.enabled || alert.journeys.count { it.enabled } > 1), onClick = { removing = index }) { Text("Remove") }
                 }
                 val key = journey.toString()
@@ -72,14 +73,15 @@ fun BusReminderOptions(alert: BusAlert, onChange: (BusAlert) -> Unit) {
                         try { statuses[key] = BusGoogleLookup.check(context, journey).status }
                         finally { checking = null }
                     }
-                }) { Text(if (checking == key) "Checking…" else "Check this bus now") }
+                }) { Text(if (checking == key) "Checking…" else if (journey.connectedRoute) "Check connections now" else "Check this bus now") }
                 statuses[key]?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
         }
         Spacer(Modifier.height(8.dp))
     }
     OutlinedButton(enabled = alert.journeys.size < 8, onClick = { adding = true }) { Text("Add bus / stop") }
-    Text("Up to 8 buses per reminder. Each enabled bus uses at most one Google request when the reminder plays. No continuous polling.",
+    OutlinedButton(enabled = alert.journeys.size < 8, onClick = { importRoute = true }) { Text("Import bus route") }
+    Text("Up to 8 buses or routes per reminder. Each enabled bus uses at most one Google request when the reminder plays. No continuous polling.",
         style = MaterialTheme.typography.bodySmall)
     Text("Read aloud", style = MaterialTheme.typography.titleMedium)
     BusCheck("Departure time", alert.readTime, !alert.readTime || alert.readMinutes) { onChange(alert.copy(readTime = it)) }
@@ -91,10 +93,21 @@ fun BusReminderOptions(alert: BusAlert, onChange: (BusAlert) -> Unit) {
     M2ReminderOptions(alert.journeys.first { it.enabled })
     Text("Google can return scheduled estimates and a limited set of journeys. A missing match does not mean no bus is running. Offline timetable fallback is available only for the original M2 preset.",
         style = MaterialTheme.typography.bodySmall)
-    if (adding || editIndex != null) {
-        val index = editIndex
+    val index = editIndex
+    val editing = index?.let { alert.journeys[it] }
+    if (importRoute || editing?.connectedRoute == true) {
+        MapsStopLinkDialog(routeOnly = true, initialRoute = editing,
+            onDismiss = { importRoute = false; editIndex = null }, onRoute = { route ->
+                val updated = if (index == null) alert.journeys + route else alert.journeys.mapIndexed { i, previous ->
+                    if (index == i) route else previous
+                }
+                onChange(alert.copy(journeys = updated))
+                importRoute = false
+                editIndex = null
+            }, selected = {})
+    } else if (adding || index != null) {
         BusJourneyDialog(initial = index?.let { alert.journeys[it] }, stops = stops + alert.journeys.map { it.stop },
-            knownLines = alert.journeys.map { it.line }, onDismiss = { adding = false; editIndex = null }) { changed ->
+            knownLines = alert.journeys.filterNot { it.connectedRoute }.map { it.line }, onDismiss = { adding = false; editIndex = null }) { changed ->
             val next = if (index == null) alert.journeys + changed else alert.journeys.mapIndexed { i, j -> if (i == index) changed else j }
             onChange(alert.copy(journeys = next))
             adding = false
@@ -102,7 +115,7 @@ fun BusReminderOptions(alert: BusAlert, onChange: (BusAlert) -> Unit) {
         }
     }
     removing?.let { index ->
-        AlertDialog(onDismissRequest = { removing = null }, title = { Text("Remove bus ${alert.journeys[index].line}?") },
+        AlertDialog(onDismissRequest = { removing = null }, title = { Text("Remove ${alert.journeys[index].title}?") },
             text = { Text("Remove this stop and line from this reminder?") },
             confirmButton = { TextButton(onClick = {
                 val next = alert.journeys.filterIndexed { i, _ -> i != index }

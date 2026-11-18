@@ -13,8 +13,8 @@ import java.security.MessageDigest
 import java.time.Instant
 import javax.net.ssl.HttpsURLConnection
 
-object BusGoogleLookup {
-    data class Result(val status: String, val estimate: Instant? = null)
+internal object BusGoogleLookup {
+    data class Result(val status: String, val estimate: Instant? = null, val connection: BusConnection? = null)
     suspend fun announce(context: Context, text: String): String {
         val alert = BusAlert.decode(text) ?: return "Bus alert settings could not be read. Please edit this reminder."
         val active = alert.journeys.filter { it.enabled }.distinctBy { lookupKey(it) }
@@ -22,7 +22,9 @@ object BusGoogleLookup {
             active.map { journey -> journey to check(context, journey) }
         }
         return (checked ?: active.map { it to Result("Lookup timed out.") }).joinToString(" ") { (journey, result) ->
-            BusAlert.announcement(journey, result.estimate, Instant.now(), alert)
+            if (journey.connectedRoute) result.connection?.announcement(alert, journey, Instant.now())
+                ?: "Bus route from ${journey.stop.name} to ${journey.destination}. ${result.status}"
+            else BusAlert.announcement(journey, result.estimate, Instant.now(), alert)
         }
     }
 
@@ -52,17 +54,25 @@ object BusGoogleLookup {
             connection.setRequestProperty("X-Goog-Api-Key", key)
             connection.setRequestProperty("X-Android-Package", context.packageName)
             connection.setRequestProperty("X-Android-Cert", sha1)
-            connection.setRequestProperty("X-Goog-FieldMask", "routes.legs.steps.transitDetails")
+            val now = Instant.now()
+            val fields = if (journey.connectedRoute) "routes.legs.steps.travelMode,routes.legs.steps.staticDuration,routes.legs.steps.transitDetails"
+                else "routes.legs.steps.transitDetails"
+            connection.setRequestProperty("X-Goog-FieldMask", fields)
             val origin = origin(journey.stop)
             val body = mapOf("origin" to origin, "destination" to destination(journey),
-                "travelMode" to "TRANSIT", "transitPreferences" to mapOf("allowedTravelModes" to listOf("BUS")),
+                "departureTime" to now.toString(), "travelMode" to "TRANSIT", "transitPreferences" to mapOf("allowedTravelModes" to listOf("BUS")),
                 "languageCode" to "en", "regionCode" to "AE", "computeAlternativeRoutes" to true)
             connection.outputStream.use { it.write(Gson().toJson(body).toByteArray()) }
             val code = connection.responseCode
             if (code != 200) return Result("Google Maps returned HTTP $code. Check the Routes API key and billing.")
-            val estimate = connection.inputStream.bufferedReader().use {
-                selectEstimate(JsonParser.parseReader(it).asJsonObject, journey, Instant.now())
+            val reply = connection.inputStream.bufferedReader().use { JsonParser.parseReader(it).asJsonObject }
+            if (journey.connectedRoute) {
+                val connectionPlan = BusConnections.select(reply, journey, now)
+                    ?: return Result(if (journey.line.isBlank()) "Google Maps returned no reachable bus itinerary."
+                        else "Google Maps returned no reachable connection using ${journey.linesInOrder.joinToString(" then ")}.")
+                return Result(connectionPlan.announcement(BusAlert(listOf(journey)), journey, now), connection = connectionPlan)
             }
+            val estimate = selectEstimate(reply, journey, now)
             return if (estimate == null) Result("Connected. No matching first-leg bus ${journey.line} was returned at this stop. This is not a complete departure board.")
                 else Result("Connected. " + BusAlert.announcement(journey, estimate, Instant.now(), BusAlert(listOf(journey))), estimate)
         } finally { connection.disconnect() }
@@ -71,7 +81,7 @@ object BusGoogleLookup {
     internal fun destination(journey: BusJourney): Map<String, Any> =
         journey.destinationPlace?.let { origin(it) } ?: mapOf("address" to journey.destination)
 
-    internal fun lookupKey(journey: BusJourney): List<Any> = listOf(journey.stop.id, journey.line.uppercase(),
+    internal fun lookupKey(journey: BusJourney): List<Any> = listOf(journey.connectedRoute, journey.stop.id, journey.line.uppercase(),
         journey.destinationPlace?.let { origin(it) } ?: journey.destination.lowercase())
 
     internal fun origin(stop: BusStop): Map<String, Any> = when {

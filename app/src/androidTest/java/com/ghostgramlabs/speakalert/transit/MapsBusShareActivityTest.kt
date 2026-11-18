@@ -43,6 +43,21 @@ class MapsBusShareActivityTest {
         }
     }
 
+    @Test fun sharedDirectionsRetainLineOrderInDraftAcrossRotation() {
+        emulatorOnly()
+        val link = "https://www.google.com/maps/dir/Office/24.4866905,54.3647146"
+        ActivityScenario.launch<MapsBusShareActivity>(share(link)).use { activity ->
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("Bus lines in order (optional)").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Bus lines in order (optional)").performScrollTo().performTextInput("M2, 102")
+            compose.onNodeWithText("Bus lines in order (optional)").performImeAction()
+            activity.recreate()
+            compose.onNodeWithText("Use route").performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("Bus route · M2 → 102").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Edit route").performScrollTo().performClick()
+            compose.onNodeWithText("Bus lines in order (optional)").performScrollTo().assertTextContains("M2, 102")
+        }
+    }
+
     @Test fun unrelatedSharedTextShowsHelpAndCanBeCancelled() {
         emulatorOnly()
         ActivityScenario.launch<MapsBusShareActivity>(share("Unrelated test text")).use {

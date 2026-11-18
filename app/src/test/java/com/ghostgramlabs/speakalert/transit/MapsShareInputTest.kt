@@ -20,9 +20,9 @@ class MapsShareInputTest {
         assertNull(MapsShareInput.read(send, "text/plain", ""))
         assertNull(MapsShareInput.read(send, "text/plain", link + "x".repeat(10_000)))
     }
-    @Test fun rejectsDirectionsUnrelatedTextAndLookalikeDomains() {
+    @Test fun rejectsUnrelatedTextAndLookalikeDomains() {
         for (text in listOf("hello", "https://example.com", "https://google.com.evil.test/maps/place/x",
-            "https://www.google.com/maps/dir/A/B", "http://maps.google.com/?q=x")) {
+            "http://maps.google.com/?q=x")) {
             assertNull(MapsShareInput.read(send, "text/plain", text))
         }
     }

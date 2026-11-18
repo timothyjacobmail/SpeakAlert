@@ -6,7 +6,7 @@ internal object MapsShareInput {
         if (action != "android.intent.action.SEND" || !mimeType.equals("text/plain", true) ||
             text == null || text.length !in 1..10_000) return null
         val shared = text.toString().trim()
-        if (runCatching { MapsStopLink.link(shared) }.isFailure) return null
+        if (runCatching { MapsStopLink.link(shared, allowDirections = true) }.isFailure) return null
         val title = subject?.take(180)?.toString()?.replace('\n', ' ')?.trim().orEmpty()
         return if (title.isNotBlank() && shared.startsWith("https://", true) && title.length + shared.length + 1 <= 10_000)
             "$title\n$shared" else shared
