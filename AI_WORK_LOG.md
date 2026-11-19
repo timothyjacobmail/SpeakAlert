@@ -9,3 +9,4 @@
 - Published the distinct local widget branch as `codex/record-reminder-widget` on the account fork.
 - The first fresh test run exposed unsupported Java 21 instrumentation in Mockito's bundled Byte Buddy. Updated only the JVM test dependencies in the integration worktree.
 - The reconciled debug build, all 382 JVM tests, and instrumentation APK compilation passed after the test dependency update. The account fork is the primary source for future syncs.
+- Installed version code 67 in place on the phone. The installed hash matched the verified APK. The main activity launched and its process stayed alive.
