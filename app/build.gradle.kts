@@ -144,6 +144,9 @@ dependencies {
     testImplementation("org.mockito:mockito-core:4.11.0")
     testImplementation("org.mockito:mockito-inline:4.11.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+    // Mockito 4's bundled Byte Buddy version cannot instrument Java 21 classes.
+    testImplementation("net.bytebuddy:byte-buddy:1.14.17")
+    testImplementation("net.bytebuddy:byte-buddy-agent:1.14.17")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
