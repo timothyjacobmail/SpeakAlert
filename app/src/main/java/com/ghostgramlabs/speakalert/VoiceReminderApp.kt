@@ -25,6 +25,10 @@ class VoiceReminderApp : Application() {
         // application startup on some devices, so create its channel before any disk work.
         createNotificationChannels()
         container = AppContainerImpl(this)
+        applicationScope.launch {
+            runCatching { com.ghostgramlabs.speakalert.data.retention.RecordedReminderExpiryWorker.scheduleMaintenance(this@VoiceReminderApp) }
+                .onFailure { android.util.Log.w("RecordingExpiry", "Could not start recording maintenance", it) }
+        }
         // Clock style is read from widgets, notifications and pure formatters, so seed the
         // shared holder before any UI renders.
         com.ghostgramlabs.speakalert.util.TimeFormat.initialize(

@@ -114,6 +114,64 @@ class AddEditViewModelTest {
     }
 
     @Test
+    fun `quick recording schedules each preset from selection time with its audio`() = runTest {
+        whenever(repository.insertReminder(any())).thenReturn(42L)
+        org.mockito.kotlin.doAnswer { invocation ->
+            invocation.getArgument<File>(0).writeText("recorded voice")
+            null
+        }.whenever(recorder).start(any(), any())
+        val chosenAt = System.currentTimeMillis() + 17_123L
+        val presets = listOf(5, 10, 15, 30, 60)
+        presets.forEach { minutes ->
+            val editor = AddEditViewModel(repository, scheduler, settingsRepository, context,
+                recorder, player, enhancer, UnconfinedTestDispatcher())
+            editor.startRecording()
+            editor.stopRecording()
+            editor.saveQuickRecordedReminder(minutes, chosenAt)
+            advanceUntilIdle()
+            assertTrue(editor.uiState.value.saveCompleted)
+        }
+        val scheduled = argumentCaptor<ReminderEntity>()
+        verify(scheduler, times(5)).schedule(scheduled.capture(), org.mockito.kotlin.eq(false))
+        assertEquals(presets.map { chosenAt + it * 60_000L }, scheduled.allValues.map { it.nextTriggerAt })
+        scheduled.allValues.forEach { reminder ->
+            assertEquals("recorded voice", File(reminder.audioPath!!).readText())
+            assertEquals(RecurrenceType.NONE, reminder.recurrenceType)
+        }
+    }
+
+    @Test
+    fun `quick recording ignores repeated delay taps while saving`() = runTest {
+        whenever(repository.insertReminder(any())).thenReturn(42L)
+        org.mockito.kotlin.doAnswer { invocation ->
+            invocation.getArgument<File>(0).writeText("voice")
+            null
+        }.whenever(recorder).start(any(), any())
+        viewModel.startRecording()
+        viewModel.stopRecording()
+        viewModel.saveQuickRecordedReminder(5)
+        viewModel.saveQuickRecordedReminder(60)
+        advanceUntilIdle()
+        viewModel.saveQuickRecordedReminder(10)
+        verify(repository, times(1)).insertReminder(any())
+        verify(scheduler, times(1)).schedule(any(), org.mockito.kotlin.eq(false))
+    }
+
+    @Test
+    fun `quick recording refuses an empty take and allows recording again`() = runTest {
+        viewModel.startRecording()
+        viewModel.stopRecording()
+        viewModel.saveQuickRecordedReminder(5)
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.recordedAudioPath)
+        assertEquals(RecordingIssue.TOO_SHORT, viewModel.uiState.value.recordingIssue)
+        verify(repository, never()).insertReminder(any())
+        viewModel.startRecording()
+        assertTrue(viewModel.uiState.value.isRecording)
+        viewModel.stopRecording()
+    }
+
+    @Test
     fun `canceling an imported shake take preserves the inbox original`() = runTest {
         val store = com.ghostgramlabs.speakalert.shake.ShakeDraftStore(context.filesDir)
         val original = store.finish(store.newRecording().apply { writeText("voice") })
@@ -200,6 +258,43 @@ class AddEditViewModelTest {
         viewModel.applyDefaultsForNewReminder("../private")
         advanceUntilIdle()
         assertEquals("Keep this", viewModel.uiState.value.title)
+    }
+
+    @Test
+    fun `shared bus creates an unsaved weekday draft and recreation preserves edits`() = runTest {
+        val journey = com.ghostgramlabs.speakalert.transit.BusJourney(
+            com.ghostgramlabs.speakalert.transit.BusAlert.defaultStop, "111", "Marina Mall, Abu Dhabi")
+        whenever(settingsRepository.defaultFollowUpMinutes).thenReturn(MutableStateFlow(30))
+        viewModel.applyDefaultsForNewReminder(sharedBusJourney = journey)
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(listOf(journey), com.ghostgramlabs.speakalert.transit.BusAlert.decode(state.reminderText)!!.journeys)
+        assertTrue(state.hasUnsavedChanges)
+        assertEquals(0, state.followUpCheckMinutes)
+        assertFalse(state.loopPlayback)
+        assertEquals(RecurrenceType.WEEKLY, state.recurrenceType)
+        val at = java.time.Instant.ofEpochMilli(state.triggerTime).atZone(java.time.ZoneId.of("Asia/Dubai"))
+        assertEquals(16, at.hour)
+        assertEquals(50, at.minute)
+        assertTrue(at.dayOfWeek.value in 1..5)
+        viewModel.updateTitle("My shared bus")
+        viewModel.setTriggerTime(state.triggerTime + 60_000)
+        viewModel.applyDefaultsForNewReminder(sharedBusJourney = journey)
+        advanceUntilIdle()
+        assertEquals("My shared bus", viewModel.uiState.value.title)
+        assertEquals(state.triggerTime + 60_000, viewModel.uiState.value.triggerTime)
+        org.mockito.kotlin.verifyNoInteractions(scheduler)
+        org.mockito.kotlin.verify(repository, org.mockito.kotlin.never()).insertReminder(any())
+    }
+
+    @Test
+    fun `invalid shared journey never becomes a reminder draft`() = runTest {
+        viewModel.applyDefaultsForNewReminder(sharedBusJourney =
+            com.ghostgramlabs.speakalert.transit.BusJourney(com.ghostgramlabs.speakalert.transit.BusAlert.defaultStop, "", ""))
+        advanceUntilIdle()
+        assertEquals("", viewModel.uiState.value.reminderText)
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+        org.mockito.kotlin.verifyNoInteractions(scheduler)
     }
 
     @Test

@@ -132,7 +132,7 @@ private class UpcomingRemindersRemoteViewsFactory(
             ?.takeIf { it.isNotEmpty() && !it.isDefaultAppDisplayName() }
         if (userTitle != null) return userTitle
 
-        val textFallback = reminder.reminderText
+        val textFallback = com.ghostgramlabs.speakalert.transit.BusAlert.display(reminder.reminderText)
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?.let(::truncateTextTitle)
@@ -145,7 +145,7 @@ private class UpcomingRemindersRemoteViewsFactory(
             .takeIf { it.isNotEmpty() && !it.isDefaultAppDisplayName() }
         if (userTitle != null) return userTitle
 
-        val textFallback = missed.reminderText
+        val textFallback = com.ghostgramlabs.speakalert.transit.BusAlert.display(missed.reminderText)
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?.let(::truncateTextTitle)

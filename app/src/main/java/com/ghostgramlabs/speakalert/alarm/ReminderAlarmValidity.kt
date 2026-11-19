@@ -13,5 +13,7 @@ internal fun shouldIgnoreReminderAlarm(
     // Done clears snoozeUntil, so a queued broadcast remains rejected afterward.
     val isRequestedSnooze = !isFollowUpTrigger && reminder.snoozeUntil == scheduledTime
     return (reminder.isCompleted && !isRequestedSnooze) ||
-        (isFollowUpTrigger && reminder.pendingFollowUpAt != scheduledTime)
+        (isFollowUpTrigger && reminder.pendingFollowUpAt != scheduledTime) ||
+        (!isFollowUpTrigger && reminder.recurrenceType == com.ghostgramlabs.speakalert.domain.models.RecurrenceType.NONE &&
+            scheduledTime != (reminder.snoozeUntil ?: reminder.nextTriggerAt))
 }

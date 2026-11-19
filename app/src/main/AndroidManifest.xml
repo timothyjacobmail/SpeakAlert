@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -14,6 +15,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -21,6 +24,10 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <queries>
+        <package android:name="com.vivo.soundrecorder" />
+    </queries>
 
     <application
         android:name=".VoiceReminderApp"
@@ -36,6 +43,7 @@
         android:theme="@style/Theme.SpeakAlert"
         android:enableOnBackInvokedCallback="false"
         tools:targetApi="33">
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}" />
         <!-- Predictive back is on by default when targeting Android 16, and it stops the Back
              key event that Material 1.1's bottom sheets listen for, so Back no longer closed
              any sheet. Remove this once the Compose/Material upgrade handles predictive back. -->
@@ -43,6 +51,47 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.SpeakAlert" />
+
+        <activity
+            android:name=".transit.MapsBusShareActivity"
+            android:exported="true"
+            android:theme="@style/Theme.SpeakAlert">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".recorderimport.RecorderImportSettingsActivity"
+            android:label="@string/recorder_import_title"
+            android:exported="true"
+            android:theme="@style/Theme.SpeakAlert" />
+
+        <service
+            android:name=".recorderimport.RecorderMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled, notification-visible monitoring of completed vivo Recorder audio files to create timely voice reminders while the screen is off. No microphone capture or continuous polling." />
+        </service>
+
+        <receiver android:name=".recorderimport.RecorderImportRestartReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".quickrecord.QuickActionLauncherActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity="${applicationId}.launcher"
+            android:showWhenLocked="true"
             android:theme="@style/Theme.SpeakAlert">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -63,8 +112,34 @@
             android:exported="false"
             android:theme="@style/Theme.SpeakAlert" />
 
+        <activity
+            android:name=".widget.QuickRecordReminderActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.quickrecord"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.SpeakAlert" />
+
         <service
             android:name=".shake.ShakeRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <activity
+            android:name=".quickrecord.QuickActionRecordingActivity"
+            android:label="@string/quick_action_launcher"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.quickaction"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.SpeakAlert" />
+
+        <service
+            android:name=".quickrecord.QuickActionRecordingService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
@@ -121,6 +196,21 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/upcoming_reminders_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.RecordReminderWidgetProvider"
+            android:label="@string/widget_record_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/record_reminder_widget_info" />
+            <meta-data
+                android:name="tk.zwander.lockscreenwidgets.KEEP_KEYGUARD"
+                android:value="true" />
         </receiver>
 
         <provider

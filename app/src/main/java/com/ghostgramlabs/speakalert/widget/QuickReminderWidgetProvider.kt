@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.widget.RemoteViews
 import com.ghostgramlabs.speakalert.MainActivity
 import com.ghostgramlabs.speakalert.R
@@ -13,8 +14,12 @@ class QuickReminderWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { widgetId ->
-            appWidgetManager.updateAppWidget(widgetId, buildRemoteViews(context, widgetId))
+            appWidgetManager.updateAppWidget(widgetId, buildRemoteViews(context, appWidgetManager, widgetId))
         }
+    }
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, widgetId: Int, newOptions: Bundle) {
+        onUpdate(context, manager, intArrayOf(widgetId))
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -33,8 +38,9 @@ class QuickReminderWidgetProvider : AppWidgetProvider() {
         )
     }
 
-    private fun buildRemoteViews(context: Context, widgetId: Int): RemoteViews {
-        return RemoteViews(context.packageName, R.layout.widget_quick_reminder).apply {
+    private fun buildRemoteViews(context: Context, manager: AppWidgetManager, widgetId: Int): RemoteViews {
+        return ActionWidgetLayouts.create(context, manager, widgetId,
+            R.layout.widget_quick_reminder_compact, R.layout.widget_quick_reminder) {
             val pendingIntent = actionPendingIntent(context, widgetId)
             setOnClickPendingIntent(R.id.quick_widget_root, pendingIntent)
             setOnClickPendingIntent(R.id.quick_add_button, pendingIntent)

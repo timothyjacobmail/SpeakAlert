@@ -209,6 +209,12 @@ object ReminderBackupManager {
                 followUpCheckMinutes = item.followUpCheckMinutes
             )
 
+            if (com.ghostgramlabs.speakalert.data.retention.RecordedReminderExpiry(File(context.filesDir, "reminders")).isExpired(candidate, now)) {
+                skippedExpired++
+                extractedFile?.delete()
+                continue
+            }
+
             if (candidate.nextTriggerAt <= now) {
                 val nextTrigger = if (recurrenceType != RecurrenceType.NONE) {
                     RecurrenceUtils.computeNextTrigger(candidate, now)

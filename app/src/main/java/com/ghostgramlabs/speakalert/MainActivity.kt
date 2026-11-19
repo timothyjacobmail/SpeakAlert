@@ -60,6 +60,25 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
+    override fun onResume() {
+        super.onResume()
+        com.ghostgramlabs.speakalert.recorderimport.RecorderImportSettings.restore(this)
+        (application as VoiceReminderApp).applicationScope.launch {
+            runCatching { com.ghostgramlabs.speakalert.data.retention.RecordedReminderExpiryWorker.enqueueSweep(this@MainActivity) }
+                .onFailure { android.util.Log.w("RecordingExpiry", "Could not refresh recording retention", it) }
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.hasExtra("reminderId") || intent.getBooleanExtra("openAddEdit", false)) {
+            // Existing notification and widget routes still initialize their requested screen
+            // when singleTop delivers an intent to a running MainActivity.
+            recreate()
+        }
+    }
+
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(com.ghostgramlabs.speakalert.util.AppLocale.wrapContext(newBase))
     }

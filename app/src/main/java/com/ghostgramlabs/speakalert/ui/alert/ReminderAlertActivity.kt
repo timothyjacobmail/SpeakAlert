@@ -289,10 +289,10 @@ private fun ReminderAlertContent(
     val isFollowUp = isFollowUpAlert || (reminder.followUpCheckMinutes > 0 && reminder.pendingFollowUpAt != null)
     val headline = titleOverride
         ?: reminder.title
-        ?: reminder.reminderText
+        ?: com.ghostgramlabs.speakalert.transit.BusAlert.display(reminder.reminderText)
         ?: APP_DISPLAY_NAME
     val bodyText = messageOverride
-        ?: reminder.reminderText
+        ?: com.ghostgramlabs.speakalert.transit.BusAlert.display(reminder.reminderText)
         ?: if (isFollowUp) {
             stringResource(R.string.alert_did_you_complete)
         } else {

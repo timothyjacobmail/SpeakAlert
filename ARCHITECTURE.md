@@ -159,8 +159,18 @@ The status channel disables sound, vibration and badges by default; every notifi
 is updated with recognition progress, mode, last action and the saved due time. Optional
 recording/edit cues are independent of notification alerts.
 
-`ShakeDetector` requires two distinct 2.7g peaks within 1.2 seconds, separated by at least
-180ms. Force and cooldown are configurable (2.7g and 500ms by default). `ShakeSequence` groups
+`ShakeDetector` estimates and subtracts gravity from the existing raw accelerometer stream.
+It requires two X-axis-dominant flicks of the same sign, 240–1200ms apart, with an
+opposite return between them. Quick or strong returns are accepted without counting as
+another flick; off-axis leading samples do not latch out the width-axis peak.
+Either sign is accepted, independent of display rotation; it
+recognizes the width-wise pattern, not an absolute direction toward the ground. After allowing
+180ms for braking, it requires 200ms below 0.65g within 800ms of the second flick. Further
+strong motion cancels that candidate. Sensor gaps over 250ms and invalid samples clear the
+candidate and restart gravity initialization. Force now measures gravity-removed width-axis
+acceleration; force and cooldown remain configurable (2.7g and 500ms by default). Device
+testing is needed to tune the heuristic against actual flicks, pocket motion and running.
+`ShakeSequence` groups
 complete gestures until a configurable quiet gap (1400ms by default), dispatching only one
 single/double/triple action; larger groups are ignored. `ShakeActionEngine` implements the
 Ready, Recording, After recording, Minutes and Hours contexts with monotonic idle deadlines
@@ -173,6 +183,18 @@ capturing simultaneously. `ShakeRecordingSound` uses short notification-stream t
 capture starts and after it stops; each tone generator releases independently of service
 shutdown. Editing cues distinguish Minutes and Hours mode. The service stays foreground until
 a user-requested stop has saved the active take or pending time edit.
+The persisted `waitAfterRecording` preference defaults to true; disabling it commits a completed
+take immediately instead of opening the entry window. Fixed +5/+30 notification actions use a
+per-take UUID in their PendingIntent data and extras, so a stale action cannot edit a newer take.
+During recording, additions accumulate as a stop-relative delay; during editing, they update
+the selected instant. Actions arriving during a save are queued and drained serially.
+
+`ShakeReminderExtender` updates an existing future one-time reminder through guarded SQL that
+changes only `nextTriggerAt`. It rejects completed, delivered, snoozed, due or concurrently
+edited rows and rechecks the row before scheduling with the existing alarm identity. The
+receiver rejects superseded one-time alarm timestamps. Notification extensions never insert a
+second reminder or change the audio. While the session is active, extension actions disappear
+at the remembered due time; each tap also validates current database state.
 
 `ShakeDraftStore` writes to private `files/shake_recordings/`, renaming finalized takes from
 `.recording` to `.m4a`. A completed file is held through the entry/edit window, protected from

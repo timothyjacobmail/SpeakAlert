@@ -19,6 +19,7 @@ class ShakeSettingsStore(private val store: DataStore<Preferences>) {
             thresholdG = prefs[floatPreferencesKey("shake_threshold_g")] ?: defaults.thresholdG,
             sounds = prefs[booleanPreferencesKey("shake_sounds")] ?: true,
             vibration = prefs[booleanPreferencesKey("shake_vibration")] ?: true,
+            waitAfterRecording = prefs[booleanPreferencesKey("shake_wait_after_recording")] ?: true,
             bindings = defaults.bindings.mapValues { (binding, fallback) ->
                 val name = prefs[bindingKey(binding)]
                 ShakeAction.values().find { it.name == name } ?: fallback
@@ -39,6 +40,7 @@ class ShakeSettingsStore(private val store: DataStore<Preferences>) {
             prefs[floatPreferencesKey("shake_threshold_g")] = value.thresholdG
             prefs[booleanPreferencesKey("shake_sounds")] = value.sounds
             prefs[booleanPreferencesKey("shake_vibration")] = value.vibration
+            prefs[booleanPreferencesKey("shake_wait_after_recording")] = value.waitAfterRecording
             value.bindings.forEach { (binding, action) -> prefs[bindingKey(binding)] = action.name }
         }
     }

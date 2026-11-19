@@ -69,16 +69,9 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
 
                 val reminder = repository.getReminder(reminderId)
                 if (reminder == null) {
-                    FileLogger.log("ALARM: Reminder $reminderId NOT FOUND in database!")
-                    withContext(Dispatchers.Main) {
-                        notificationHelper.showNotification(
-                            reminderId,
-                            APP_DISPLAY_NAME,
-                            com.ghostgramlabs.speakalert.util.AppLocale.localizedContext(context)
-                                .getString(R.string.notif_reminder_missing),
-                            autoplayOnTap = false
-                        )
-                    }
+                    // Deleted or expired reminders can still have an alarm already in flight.
+                    // Those stale broadcasts must not create a new "missing reminder" alert.
+                    FileLogger.log("ALARM: Ignoring deleted or expired reminder $reminderId")
                     return@launch
                 }
 

@@ -5,6 +5,22 @@ User-facing changes to SpeakAlert, newest first. Version numbers match the Googl
 
 ## Unreleased
 
+- Speed up optional voice-enhancement processing with an optimized Java FFT and reusable
+  output buffers. A synthetic phone benchmark used about 14% less processing time.
+- Move reminder-expiry list filtering off the UI thread and reuse cleanup jobs when the
+  expiry date is unchanged, avoiding extra WorkManager writes on snooze and Done.
+- Recorded reminders expire 7 days after creation, including active, repeating and completed
+  reminders. Cleanup removes their stored audio, missed history, pending alarms and alerts;
+  editing a reminder keeps its original creation date. Shared recordings remain while used
+  by a newer reminder.
+- Add quick-action recording that recognizes vivo shortcut launches after unlocking, with
+  notification Stop controls and voice reminders due 10 minutes after recording stops.
+- Fix missed shake gestures when the return movement is quick or strong, or a sideways
+  flick starts slightly off-axis. Keep the two-flick and still-finish safeguards.
+- Shake detection now requires two width-wise flicks in the same direction, a gentler lift
+  between them and a brief still finish, to reduce accidental triggers from ordinary movement.
+- Add a toggle to skip the shake-edit waiting window after recording, and silent notification
+  buttons to add 5 or 30 minutes during capture, time editing or before the saved reminder is due.
 - Shake listening now updates one explicitly silent status notification with gesture recognition,
   the current mode/action, recording progress, saving status and the scheduled due time.
 - Customizable single/double/triple shake actions for recording and time editing, with separate

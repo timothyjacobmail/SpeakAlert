@@ -53,6 +53,7 @@ private fun ShakeSettingsForm(initial: ShakeSettings, store: ShakeSettingsStore,
     var bindings by rememberSaveable { mutableStateOf(bindingValues(initial)) }
     var sounds by rememberSaveable { mutableStateOf(initial.sounds) }
     var vibration by rememberSaveable { mutableStateOf(initial.vibration) }
+    var waitAfterRecording by rememberSaveable { mutableStateOf(initial.waitAfterRecording) }
     var saving by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -68,7 +69,7 @@ private fun ShakeSettingsForm(initial: ShakeSettings, store: ShakeSettingsStore,
         hourStep = numbers.getValue("hours").toInt(), entryWindowSeconds = numbers.getValue("entry").toInt(),
         editTimeoutSeconds = numbers.getValue("timeout").toInt(), sequenceGapMs = numbers.getValue("gap").toInt(),
         cooldownMs = numbers.getValue("cooldown").toInt(), thresholdG = numbers.getValue("sensitivity").toFloat(),
-        sounds = sounds, vibration = vibration,
+        sounds = sounds, vibration = vibration, waitAfterRecording = waitAfterRecording,
         bindings = ShakeSettings.defaultBindings().mapValues { (binding, fallback) ->
             ShakeAction.values().find { it.name == bindings["${binding.mode.name}:${binding.count}"] } ?: fallback
         }
@@ -81,6 +82,13 @@ private fun ShakeSettingsForm(initial: ShakeSettings, store: ShakeSettingsStore,
             OutlinedButton(onClick = { ShakeRecordingService.stop(context) }) { Text(stringResource(R.string.shake_disable)) }
         }
         item { Text(stringResource(R.string.shake_time_settings), style = MaterialTheme.typography.titleLarge) }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(stringResource(R.string.shake_wait_setting), Modifier.weight(1f))
+                Switch(waitAfterRecording, { waitAfterRecording = it }, enabled = !saving)
+            }
+            Text(stringResource(R.string.shake_wait_help), style = MaterialTheme.typography.bodySmall)
+        }
         listOf(
             Triple("default", R.string.shake_default_delay, R.string.shake_range_minutes),
             Triple("minutes", R.string.shake_fine_step, R.string.shake_range_minutes),
@@ -88,7 +96,7 @@ private fun ShakeSettingsForm(initial: ShakeSettings, store: ShakeSettingsStore,
             Triple("entry", R.string.shake_entry_window, R.string.shake_range_seconds),
             Triple("timeout", R.string.shake_edit_timeout, R.string.shake_range_seconds)
         ).forEach { (key, label, help) -> item {
-            NumberSetting(numbers.getValue(key), label, help, !saving) { input -> numbers = HashMap(numbers).apply { put(key, input) } }
+            NumberSetting(numbers.getValue(key), label, help, !saving && (key !in listOf("entry", "timeout") || waitAfterRecording)) { input -> numbers = HashMap(numbers).apply { put(key, input) } }
         } }
         item { Text(stringResource(R.string.shake_assignments), style = MaterialTheme.typography.titleLarge) }
         ShakeMode.values().forEach { mode -> item {
@@ -144,6 +152,7 @@ private fun ShakeSettingsForm(initial: ShakeSettings, store: ShakeSettingsStore,
                 bindings = bindingValues(defaults)
                 sounds = defaults.sounds
                 vibration = defaults.vibration
+                waitAfterRecording = defaults.waitAfterRecording
             }) { Text(stringResource(R.string.shake_restore_defaults)) }
             Spacer(Modifier.height(24.dp))
         }

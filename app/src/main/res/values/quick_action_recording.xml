@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quick_action_title">Quick-action recording</string>
+    <string name="quick_action_description">Start recording from your phone shortcut, including after vivo asks you to unlock. Activate it again to stop and remind you in 10 minutes.</string>
+    <string name="quick_action_instructions">Select SpeakAlert in your phone’s screen-off quick action. Hold Volume Down and unlock if asked; recording starts automatically. While the recording screen is visible, press Volume Down to stop. If the screen is off, activate the shortcut again and unlock if asked, or use Stop in the recording notification.</string>
+    <string name="quick_action_launcher">SpeakAlert Recorder</string>
+    <string name="quick_action_channel">Quick recording</string>
+    <string name="quick_action_channel_description">Recording status and stop controls, including on the lock screen</string>
+    <string name="quick_action_starting">Starting recording…</string>
+    <string name="quick_action_recording">Recording your reminder</string>
+    <string name="quick_action_recording_detail">Activate your shortcut again or tap Stop. Reminder: 10 minutes after stopping.</string>
+    <string name="quick_action_stop">Stop and remind in 10 min</string>
+    <string name="quick_action_saving">Saving your reminder…</string>
+    <string name="quick_action_saved">Reminder set for 10 minutes</string>
+    <string name="quick_action_failed">Recording or saving failed. Any completed recording is kept in the recordings inbox.</string>
+    <string name="quick_action_schedule_failed">Recording saved. Open SpeakAlert to check the reminder schedule.</string>
+    <string name="quick_action_permissions">Unlock once and allow microphone and notification access to use quick recording.</string>
+    <string name="quick_action_allow">Allow recording permissions</string>
+    <string name="quick_action_settings">Open app permissions</string>
+    <string name="quick_action_close">Close screen; keep recording</string>
+</resources>

@@ -47,6 +47,27 @@ class ReminderBackupAuditTest {
         assertArrayEquals(audio.readBytes(), File(scheduled.single().audioPath!!).readBytes())
     }
 
+    @Test fun `restoring an expired recorded reminder skips it and deletes extracted audio`() = runTest {
+        val bytes = setupBackup()
+        val audio = temporary.newFile("expired.m4a").apply { writeText("old voice") }
+        val original = ReminderEntity(
+            audioPath = audio.absolutePath,
+            createdAt = System.currentTimeMillis() - com.ghostgramlabs.speakalert.data.retention.RecordedReminderExpiry.RETENTION_MS - 1,
+            nextTriggerAt = System.currentTimeMillis() + 3_600_000L
+        )
+        ReminderBackupManager.export(context, backupUri, listOf(original))
+        whenever(resolver.openInputStream(backupUri)).thenAnswer { bytes.toByteArray().inputStream() }
+        val repository = mock<ReminderRepository>()
+        whenever(repository.getAllActiveReminders()).thenReturn(emptyList())
+        val scheduled = mutableListOf<ReminderEntity>()
+        val result = ReminderBackupManager.import(context, backupUri, repository, scheduled::add)
+        assertEquals(0, result.imported)
+        assertEquals(1, result.skippedExpired)
+        assertTrue(scheduled.isEmpty())
+        verify(repository, never()).insertReminder(any())
+        assertTrue(File(context.filesDir, "reminders").listFiles().orEmpty().isEmpty())
+    }
+
     @Test fun `audit chosen content URI audio survives backup restore`() = runTest {
         val bytes = setupBackup()
         val audioUri = mock<Uri>()

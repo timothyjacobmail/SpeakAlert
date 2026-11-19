@@ -2,5 +2,6 @@
 <full-backup-content>
     <include domain="database" path="."/>
     <include domain="sharedpref" path="."/>
+    <exclude domain="sharedpref" path="recorder_import.xml"/>
     <include domain="file" path="."/>
 </full-backup-content>

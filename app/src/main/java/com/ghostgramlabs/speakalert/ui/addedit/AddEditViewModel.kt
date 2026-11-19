@@ -118,9 +118,11 @@ class AddEditViewModel(
     private var savedDraft: ReminderDraft? = null
     private var importedShakeDraftId: String? = null
     private var shakeImportAttempted = false
+    private var busShareImportAttempted = false
     
     companion object {
         const val MAX_RECORDING_SECONDS = 5 * 60 // 5 minutes
+        val QUICK_RECORD_DELAY_MINUTES = listOf(5, 10, 15, 30, 60)
     }
 
     init {
@@ -171,7 +173,12 @@ class AddEditViewModel(
      * Pre-populate fields for a brand-new reminder from user-level defaults.
      * Should be called only when reminderId == -1L. Has no effect on existing reminders.
      */
-    fun applyDefaultsForNewReminder(shakeDraftId: String? = null) {
+    fun applyDefaultsForNewReminder(shakeDraftId: String? = null,
+        sharedBusJourney: com.ghostgramlabs.speakalert.transit.BusJourney? = null) {
+        if (sharedBusJourney != null) {
+            if (!sharedBusJourney.valid() || shakeDraftId != null || busShareImportAttempted) return
+            busShareImportAttempted = true
+        }
         // Configuration changes must not replace an edited take with the original again.
         if (shakeDraftId != null && shakeImportAttempted) return
         if (shakeDraftId != null) shakeImportAttempted = true
@@ -181,6 +188,16 @@ class AddEditViewModel(
             // Only apply if state hasn't already been loaded into edit mode
             if (_uiState.value.initialReminderId == -1L) {
                 setSavedDraft(_uiState.value.copy(followUpCheckMinutes = defaultFollowUp))
+                if (sharedBusJourney != null) {
+                    updateTitle("Bus arrivals")
+                    setFollowUpCheckMinutes(0)
+                    setLoopPlayback(false)
+                    updateReminderText(com.ghostgramlabs.speakalert.transit.BusAlert.encode(
+                        com.ghostgramlabs.speakalert.transit.BusAlert(listOf(sharedBusJourney))))
+                    setTriggerTime(com.ghostgramlabs.speakalert.transit.M2Timetable
+                        .nextWeekdayAlarm(java.time.Instant.now()).toEpochMilli())
+                    setRecurrence(RecurrenceModel.Weekly(com.ghostgramlabs.speakalert.transit.M2Timetable.weekdays))
+                }
                 if (shakeDraftId != null) {
                     val copy = File(tempDir, "temp_${UUID.randomUUID()}.m4a")
                     try {
@@ -559,6 +576,20 @@ class AddEditViewModel(
         setDraftState(_uiState.value.copy(followUpCheckMinutes = minutes.coerceAtLeast(0)))
     }
 
+    /** Widget delays run from the time the user chooses one, with no minute rounding. */
+    fun saveQuickRecordedReminder(minutes: Int, now: Long = System.currentTimeMillis()) {
+        require(minutes in QUICK_RECORD_DELAY_MINUTES)
+        val state = _uiState.value
+        if (state.isSaving || state.saveCompleted || state.isRecording) return
+        val audio = state.recordedAudioPath?.let(::File)
+        if (audio == null || !audio.isFile || audio.length() == 0L) {
+            _uiState.value = state.copy(recordedAudioPath = null, recordingIssue = RecordingIssue.TOO_SHORT)
+            return
+        }
+        setTriggerTime(now + minutes * 60_000L)
+        saveReminder()
+    }
+
     /**
      * Save the reminder. This is async - observe saveCompleted to know when done.
      * On success: moves temp file to final location, saves to DB, sets saveCompleted=true
@@ -583,7 +614,8 @@ class AddEditViewModel(
         val hasAudio = !state.recordedAudioPath.isNullOrBlank()
         val hasText = state.reminderText.isNotBlank()
 
-        if (!hasAudio && !hasText) {
+        if ((!hasAudio && !hasText) || (com.ghostgramlabs.speakalert.transit.BusAlert.isToken(state.reminderText) &&
+                com.ghostgramlabs.speakalert.transit.BusAlert.decode(state.reminderText) == null)) {
             _uiState.value = _uiState.value.copy(showError = true)
             return
         }

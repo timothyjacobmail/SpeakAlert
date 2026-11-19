@@ -45,7 +45,7 @@ class VoiceProcessor(private val sampleRate: Int) {
         val canDenoise: Boolean get() = noiseMagnitudes != null
     }
 
-    private val fft = Fft(FRAME_SIZE)
+    private val fft = SHARED_FFT
     private val window = FloatArray(FRAME_SIZE) { index ->
         // Root-Hann. Applied on both analysis and synthesis it squares to a Hann window, which
         // overlap-adds back to exactly 1.0 at this hop - so unmodified audio passes through
@@ -87,6 +87,7 @@ class VoiceProcessor(private val sampleRate: Int) {
     private var renderInputSamples = 0L
     private var renderOutputSamples = 0L
     private val directOutput = FloatArray(FRAME_SIZE)
+    private val overlapOutput = FloatArray(HOP)
 
     // ---------------------------------------------------------------- analysis pass
 
@@ -168,6 +169,7 @@ class VoiceProcessor(private val sampleRate: Int) {
     /**
      * Process the next block of input, handing finished output to [onOutput]. Output lags input
      * by one frame because of the overlap-add, so [finishRender] must be called at the end.
+     * Output buffers are reused; consume them synchronously or copy the valid samples.
      */
     fun render(samples: ShortArray, count: Int, onOutput: (FloatArray, Int) -> Unit) {
         require(count in 0..samples.size) { "count must describe samples in the input array" }
@@ -382,9 +384,8 @@ class VoiceProcessor(private val sampleRate: Int) {
             // back keeps the reconstruction exact.
             overlapPrimed = true
         } else {
-            val out = FloatArray(HOP)
-            for (i in 0 until HOP) out[i] = clamp(overlap[i] * gain)
-            emitProcessed(out, HOP, onOutput)
+            for (i in 0 until HOP) overlapOutput[i] = clamp(overlap[i] * gain)
+            emitProcessed(overlapOutput, HOP, onOutput)
         }
         System.arraycopy(overlap, HOP, overlap, 0, FRAME_SIZE - HOP)
         java.util.Arrays.fill(overlap, FRAME_SIZE - HOP, FRAME_SIZE, 0f)
@@ -460,79 +461,9 @@ class VoiceProcessor(private val sampleRate: Int) {
         }
     }
 
-    /** In-place radix-2 Cooley-Tukey FFT, sized once at construction. */
-    private class Fft(private val size: Int) {
-        private val reversed = IntArray(size)
-        private val cosTable = FloatArray(size / 2)
-        private val sinTable = FloatArray(size / 2)
-
-        init {
-            require(size > 0 && size and (size - 1) == 0) { "FFT size must be a power of two" }
-            var bits = 0
-            while (1 shl bits < size) bits++
-            for (i in 0 until size) {
-                var value = i
-                var result = 0
-                for (bit in 0 until bits) {
-                    result = (result shl 1) or (value and 1)
-                    value = value shr 1
-                }
-                reversed[i] = result
-            }
-            for (i in 0 until size / 2) {
-                val angle = -2.0 * PI * i / size
-                cosTable[i] = cos(angle).toFloat()
-                sinTable[i] = sin(angle).toFloat()
-            }
-        }
-
-        fun forward(real: FloatArray, imaginary: FloatArray) = transform(real, imaginary, false)
-
-        fun inverse(real: FloatArray, imaginary: FloatArray) {
-            transform(real, imaginary, true)
-            val scale = 1f / size
-            for (i in 0 until size) {
-                real[i] *= scale
-                imaginary[i] *= scale
-            }
-        }
-
-        private fun transform(real: FloatArray, imaginary: FloatArray, invert: Boolean) {
-            for (i in 0 until size) {
-                val j = reversed[i]
-                if (j > i) {
-                    var swap = real[i]; real[i] = real[j]; real[j] = swap
-                    swap = imaginary[i]; imaginary[i] = imaginary[j]; imaginary[j] = swap
-                }
-            }
-            var length = 2
-            while (length <= size) {
-                val step = size / length
-                val half = length / 2
-                var start = 0
-                while (start < size) {
-                    var index = 0
-                    for (offset in start until start + half) {
-                        val cosine = cosTable[index]
-                        val sine = if (invert) -sinTable[index] else sinTable[index]
-                        val pairIndex = offset + half
-                        val realPart = real[pairIndex] * cosine - imaginary[pairIndex] * sine
-                        val imagPart = real[pairIndex] * sine + imaginary[pairIndex] * cosine
-                        real[pairIndex] = real[offset] - realPart
-                        imaginary[pairIndex] = imaginary[offset] - imagPart
-                        real[offset] += realPart
-                        imaginary[offset] += imagPart
-                        index += step
-                    }
-                    start += length
-                }
-                length = length shl 1
-            }
-        }
-    }
-
     companion object {
         const val FRAME_SIZE = 1024
+        private val SHARED_FFT = Radix2Fft(FRAME_SIZE)
         const val HOP = FRAME_SIZE / 2
         const val BIN_COUNT = FRAME_SIZE / 2 + 1
 

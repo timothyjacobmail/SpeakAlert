@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_retention_title">Recorded reminders expire after 7 days</string>
+    <string name="recording_retention_description">Voice reminders and their stored recordings are automatically removed 7 days after creation, including active, repeating, and completed reminders. Editing or marking them done does not extend this period.</string>
+</resources>

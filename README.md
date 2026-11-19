@@ -42,22 +42,33 @@ hear it even when the phone is in your pocket or across the room.
   tone-only mode, optional Do Not Disturb bypass, and battery-optimisation guidance for
   restrictive phones.
 - **Private playback.** Play reminders through the earpiece or Bluetooth headphones.
+- **Quick-action recording.** Assign SpeakAlert to your phone's screen-off quick action.
+  On vivo, hold Volume Down and unlock if asked; recording then starts automatically.
+  Activate the shortcut again (or use the notification's Stop button) to save a reminder
+  due 10 minutes after recording stops.
 - **Shake to record.** Enable listening in Settings, then shake firmly twice to record even
   while locked. Distinct sounds confirm starting and stopping. Configure single, double and
   triple gesture actions, edit the reminder time by shaking, and check the recent action log.
-- **Widgets and Wear OS.** A quick-add widget, an upcoming-reminders widget, and alerts on
-  Wear OS watches.
+- **Widgets and Wear OS.** A quick-add widget, an upcoming-reminders widget, and a Record
+  reminder widget: tap to record, stop, then choose 5, 10, 15, or 30 minutes, or 1 hour to save.
+  Also supports alerts on Wear OS watches.
 - **Backup and restore.** Exports every reminder, voice recordings included.
+- **Recording expiry.** Recorded reminders expire 7 days after creation, with their stored
+  audio and missed history removed automatically. Editing or completing them does not restart
+  the week. This applies to active and repeating voice reminders too.
 - **12 languages.** English, Spanish, Hindi, Arabic, Portuguese (Brazil), Russian, Vietnamese,
   Bengali, Telugu, Tamil, Greek and Malayalam, with right-to-left layout support.
-- **Fully offline.** No account, no analytics, no network calls for reminders. Data stays on
-  the device.
+- **Configurable bus alerts.** Choose **Bus alerts · Choose stops and lines** in a new reminder. Share a Google Maps bus stop directly to SpeakAlert, paste a stop link, search 4,070 Abu Dhabi stop records, or choose on the optional full-screen map (custom stops are also supported), then enter the bus line and destination/direction, and add up to eight stop/line pairs. Include buses independently and choose departure time, minutes remaining, stop name and direction. All pairs share the reminder schedule; use separate reminders for different times. Existing M2 reminders and their weekday 4:50 PM UAE schedule remain compatible. See [the bus-alert guide](docs/BUS_ALERTS.md).
+- **Google Maps estimates.** Bus alerts share the existing Routes API key from your billing-enabled Google Cloud project. Restrict it to Routes API and the app package/signing certificate. Only configured trip origins and destinations are sent to Google when you check a bus or an alert plays. There is no continuous polling. Google returns limited journey alternatives and may provide scheduled times. Missing a matching trip does not prove that no bus runs. Offline timetable fallback is available only for the original M2 / Al Hayal / Mazyad Mall preset, using the [20 March 2026 timetable](https://admobility.gov.ae/ckfinder/userfiles/files/BusServiceM2.pdf). Other pairs report an unavailable estimate when no match is returned. The key stays in private, backup-excluded storage.
+- **Offline reminders.** Scheduling, recordings, and timetable announcements work without an account or a network connection.
 
 ## Shake recording
 
 Open **Settings > Shake to record > Open recordings and controls**, grant microphone and
 notification access, then tap **Enable listening** before locking the phone. One gesture is
-two firm movements within 1.2 seconds. Repeat the complete gesture to make a double or triple;
+two width-wise flicks toward the ground in the same direction within 1.2 seconds, lifting
+back gently between flicks, then holding briefly still. Either hand works. Repeat the complete
+gesture after the minimum pause to make a double or triple;
 an action runs after the grouping pause (1.4 seconds by default), so a double does not also
 run the single action. Four or more gestures in one group are ignored.
 
@@ -75,6 +86,17 @@ The initial time is five minutes after recording stops. Switching modes does not
 Pause for 10 seconds to finish automatically, or use **Finish and schedule reminder**.
 The completed audio is saved immediately; the reminder is inserted and scheduled once the
 entry/edit window ends. **Stop listening** also finishes the pending reminder immediately.
+Turn off **Wait for shakes after recording** in **Customize shake actions** to schedule as soon
+as recording stops. The toggle defaults to on, preserving the existing editing window.
+
+The silent notification has **+5 min** and **+30 min** buttons. During recording they extend
+the reminder delay measured from the moment recording stops (not the recording duration).
+During time editing they extend the selected due time without changing the gesture mode.
+After scheduling, they extend the same reminder and replace its alarm, while listening stays
+active and before that reminder is due. Repeated taps accumulate; completed, delivered,
+deleted or concurrently changed reminders are not overwritten. The recording notification
+keeps **Stop and save** as its third action; the pending notification keeps **Finish**.
+Tap the notification body to open the remaining controls, including Stop listening.
 The screen and ongoing notification show the mode, step and due time during editing.
 The notification updates silently as gestures are recognized, recording starts/stops, modes
 change and the reminder is saved. It shows the last action and final due time without making

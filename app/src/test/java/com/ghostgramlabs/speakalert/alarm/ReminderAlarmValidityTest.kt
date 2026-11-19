@@ -8,6 +8,13 @@ import org.junit.Test
 class ReminderAlarmValidityTest {
     private val reminder = ReminderEntity(id = 1, nextTriggerAt = 10_000L)
 
+    @Test fun `extending a one time reminder rejects the queued original alarm`() {
+        val extended = reminder.copy(nextTriggerAt = 310_000L)
+        assertTrue(shouldIgnoreReminderAlarm(extended, 10_000L, false))
+        assertFalse(shouldIgnoreReminderAlarm(extended, 310_000L, false))
+        assertFalse(shouldIgnoreReminderAlarm(extended.copy(pendingFollowUpAt = 400_000L), 400_000L, true))
+    }
+
     @Test
     fun `done rejects already delivered regular and follow-up alarms`() {
         val completed = reminder.copy(isCompleted = true, pendingFollowUpAt = 20_000L)
