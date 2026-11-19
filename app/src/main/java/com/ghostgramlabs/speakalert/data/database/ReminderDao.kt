@@ -39,6 +39,13 @@ interface ReminderDao {
     @Update
     suspend fun updateReminder(reminder: ReminderEntity)
 
+    // Change only the deadline, and never overwrite a concurrent edit, Done or delivered alarm.
+    @Query("""UPDATE reminders SET nextTriggerAt = :updatedTime
+        WHERE id = :id AND nextTriggerAt = :expectedTime AND nextTriggerAt > :now
+        AND isCompleted = 0 AND lastFiredAt IS NULL AND snoozeUntil IS NULL
+        AND pendingFollowUpAt IS NULL AND recurrenceType = 'NONE'""")
+    suspend fun extendUnfiredReminder(id: Long, expectedTime: Long, updatedTime: Long, now: Long): Int
+
     @Delete
     suspend fun deleteReminder(reminder: ReminderEntity)
     

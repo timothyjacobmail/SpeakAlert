@@ -6,6 +6,55 @@ import org.junit.Test
 class ShakeActionsTest {
     private val wall = 1_800_000_037_123L
 
+    @Test fun `disabling the wait leaves the selected deadline ready for immediate scheduling`() {
+        val engine = ShakeActionEngine(ShakeSettings(waitAfterRecording = false))
+        engine.recordingStarted()
+        engine.extend(5, wall, 0)
+        engine.recordingStopped(wall + 45_000L, 45_000L)
+        assertNull(engine.deadline)
+        assertEquals(wall + 45_000L + 600_000L, engine.triggerAt)
+    }
+
+    @Test fun `notification buttons during recording extend from stop time and reset for the next take`() {
+        val engine = ShakeActionEngine(ShakeSettings(minuteStep = 2, hourStep = 90))
+        engine.recordingStarted()
+        assertTrue(engine.extend(5, wall, 0))
+        assertTrue(engine.extend(30, wall + 1_000L, 1_000L))
+        assertEquals(ShakeMode.RECORDING, engine.mode)
+        assertEquals(40, engine.recordingDelayMinutes)
+        assertNull(engine.triggerAt)
+        engine.recordingStopped(wall + 120_000L, 120_000L)
+        assertEquals(wall + 120_000L + 40 * 60_000L, engine.triggerAt)
+        engine.finished()
+        engine.recordingStarted()
+        assertEquals(5, engine.recordingDelayMinutes)
+    }
+
+    @Test fun `notification additions preserve edit mode and refresh its timeout`() {
+        val engine = ShakeActionEngine(ShakeSettings(minuteStep = 2, hourStep = 90))
+        engine.recordingStopped(wall, 0)
+        engine.extend(5, wall, 2_000)
+        assertEquals(ShakeMode.AFTER_RECORDING, engine.mode)
+        assertEquals(12_000L, engine.deadline)
+        engine.perform(ShakeAction.ENTER_EDIT, wall, 3_000)
+        engine.perform(ShakeAction.SWITCH_MODE, wall, 4_000)
+        engine.extend(30, wall, 5_000)
+        assertEquals(ShakeMode.HOURS, engine.mode)
+        assertEquals(wall + 40 * 60_000L, engine.triggerAt)
+        assertEquals(15_000L, engine.deadline)
+        assertFalse(engine.extend(-5, wall, 6_000))
+        assertFalse(engine.extend(90, wall, 6_000))
+        engine.finished()
+        assertFalse(engine.extend(5, wall, 7_000))
+    }
+
+    @Test fun `recording notification additions stop at seven days`() {
+        val engine = ShakeActionEngine(ShakeSettings())
+        engine.recordingStarted()
+        repeat(400) { engine.extend(30, wall, it.toLong()) }
+        assertEquals(10_080, engine.recordingDelayMinutes)
+    }
+
     @Test fun `default flow preserves five minutes then adds fine and coarse steps`() {
         val engine = ShakeActionEngine(ShakeSettings())
         assertEquals(ShakeAction.START_RECORDING, engine.settings.action(engine.mode, 1))

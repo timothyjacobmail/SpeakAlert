@@ -20,6 +20,7 @@ interface ReminderRepository {
     suspend fun getAllActiveReminders(): List<ReminderEntity>
     suspend fun insertReminder(reminder: ReminderEntity): Long
     suspend fun updateReminder(reminder: ReminderEntity)
+    suspend fun extendUnfiredReminder(id: Long, expectedTime: Long, updatedTime: Long, now: Long): Boolean
     suspend fun deleteReminder(reminder: ReminderEntity)
 }
 
@@ -67,5 +68,11 @@ class OfflineReminderRepository(
         // failed save. Startup and periodic sweeps also enforce retention.
         runCatching { scheduleExpiry(reminder) }
             .onFailure { android.util.Log.w("RecordingExpiry", "Could not schedule recording cleanup", it) }
+    }
+
+    override suspend fun extendUnfiredReminder(id: Long, expectedTime: Long, updatedTime: Long, now: Long): Boolean {
+        val updated = reminderDao.extendUnfiredReminder(id, expectedTime, updatedTime, now) == 1
+        if (updated) SpeakAlertWidgetUpdater.requestUpdate(context)
+        return updated
     }
 }

@@ -20,6 +20,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.ghostgramlabs.speakalert.R
@@ -38,6 +39,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
+import java.util.UUID
 
 data class ShakeRecordingState(
     val listening: Boolean = false,
@@ -77,6 +79,9 @@ class ShakeRecordingService : Service(), SensorEventListener {
     private var gestureStatus: String? = null
     private var lastActionText: String? = null
     private var scheduledTime: Long? = null
+    private var takeToken: String? = null
+    private val extensions = java.util.ArrayDeque<Int>()
+    private val refreshDue = Runnable { if (armed) updateNotification() }
     private val autoStop = Runnable { finishRecording() }
     private val dispatchSequence = Runnable {
         if (!armed || saving) sequence.clear()
@@ -138,6 +143,11 @@ class ShakeRecordingService : Service(), SensorEventListener {
             ACTION_EDIT -> if (armed && !saving) handleAction(ShakeAction.ENTER_EDIT)
             ACTION_ADD -> if (armed && !saving) handleAction(ShakeAction.ADD_TIME)
             ACTION_SWITCH -> if (armed && !saving) handleAction(ShakeAction.SWITCH_MODE)
+            ACTION_EXTEND -> {
+                if (armed && intent.getStringExtra(EXTRA_TAKE) == takeToken && takeToken != null) {
+                    extendTime(intent.getIntExtra(EXTRA_MINUTES, 0))
+                } else if (!armed && !saving && !arming) stopSelf()
+            }
             ACTION_DISABLE -> {
                 stopping = true
                 armed = false
@@ -256,6 +266,9 @@ class ShakeRecordingService : Service(), SensorEventListener {
             recorder.start(candidate, useExperimentalBehavior = true)
             recordingFile = candidate
             scheduledTime = null
+            takeToken = UUID.randomUUID().toString()
+            extensions.clear()
+            handler.removeCallbacks(refreshDue)
             engine.recordingStarted()
             detector.reset(SystemClock.elapsedRealtime())
             acquireWakeLock() // Keep the five-minute deadline running even on wake-up sensors.
@@ -320,7 +333,7 @@ class ShakeRecordingService : Service(), SensorEventListener {
         if (armed) updateNotification()
         vibrate(250L)
         if (settings.sounds) ShakeRecordingSound.stopped()
-        if (!armed || destroyed) commitPending()
+        if (!armed || destroyed || !settings.waitAfterRecording) commitPending()
         releaseIdleWakeLock()
     }
 
@@ -349,6 +362,74 @@ class ShakeRecordingService : Service(), SensorEventListener {
         engine.deadline?.let { handler.postDelayed(finishWindow, (it - SystemClock.elapsedRealtime()).coerceAtLeast(0L)) }
     }
 
+    private fun extendTime(minutes: Int) {
+        if (minutes != 5 && minutes != 30) return
+        if (engine.extend(minutes, System.currentTimeMillis(), SystemClock.elapsedRealtime())) {
+            lastActionText = getString(R.string.shake_extended_by, minutes)
+            gestureStatus = null
+            sequence.clear()
+            handler.removeCallbacks(dispatchSequence)
+            scheduleWindow()
+            appendLog(lastActionText!!)
+            publish(state.value.message, state.value.reminderId)
+            updateNotification()
+            return
+        }
+        // A tap arriving during the initial save or an earlier extension belongs to this take.
+        // Serialize them so quick repeated taps each extend the latest stored time.
+        if (saving) { extensions.addLast(minutes); return }
+        val id = state.value.reminderId ?: return
+        extensions.addLast(minutes)
+        saving = true
+        publish(R.string.shake_updating_time, id)
+        updateNotification()
+        val app = application as VoiceReminderApp
+        val saveLock = newSaveWakeLock()
+        app.applicationScope.launch(Dispatchers.Main.immediate) {
+            val message = try { drainExtensions(id) ?: R.string.shake_scheduled }
+                catch (failure: Exception) {
+                    android.util.Log.w("ShakeRecording", "Could not extend reminder", failure)
+                    extensions.clear()
+                    R.string.shake_extend_failed
+                }
+            finally { runCatching { if (saveLock?.isHeld == true) saveLock.release() } }
+            saving = false
+            if (!destroyed) {
+                publish(message, id)
+                if (stopping) stopSelf() else if (armed) updateNotification()
+            }
+        }
+    }
+
+    /** Returns a user-facing error, or null after every queued extension succeeds. */
+    private suspend fun drainExtensions(id: Long): Int? {
+        val container = (application as VoiceReminderApp).container
+        val extender = ShakeReminderExtender(container.reminderRepository, container.alarmScheduler)
+        while (extensions.isNotEmpty()) {
+            val minutes = extensions.removeFirst()
+            val result = extender.extend(id, minutes)
+            if (result == null) {
+                extensions.clear()
+                scheduledTime = null
+                return R.string.shake_extend_unavailable
+            }
+            scheduledTime = result.reminder.nextTriggerAt
+            lastActionText = getString(R.string.shake_extended_by, minutes)
+            appendLog(getString(R.string.shake_log_saved, formatTime(result.reminder.nextTriggerAt)))
+            if (!result.scheduled) {
+                extensions.clear()
+                return R.string.shake_schedule_failed
+            }
+        }
+        return null
+    }
+
+    private fun newSaveWakeLock(): PowerManager.WakeLock? = runCatching {
+        getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:ShakeReminderSave")
+            .apply { acquire(30_000L) }
+    }.getOrNull()
+
     private fun commitPending() {
         val take = pendingTake ?: return
         lastActionText = getString(R.string.shake_finish_time)
@@ -370,11 +451,7 @@ class ShakeRecordingService : Service(), SensorEventListener {
     private fun createReminder(recording: File, stoppedAt: Long, silent: Boolean, triggerAt: Long) {
         val app = application as VoiceReminderApp
         // Keep the CPU awake for the short database/alarm handoff even after sensors stop.
-        val saveWakeLock = runCatching {
-            getSystemService(PowerManager::class.java)
-                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:ShakeReminderSave")
-                .apply { acquire(30_000L) }
-        }.getOrNull()
+        val saveWakeLock = newSaveWakeLock()
         app.applicationScope.launch(Dispatchers.Main.immediate) {
             var reminderId: Long? = null
             var message = R.string.shake_auto_save_failed
@@ -390,7 +467,13 @@ class ShakeRecordingService : Service(), SensorEventListener {
                     silent -> R.string.shake_scheduled_quiet
                     else -> R.string.shake_scheduled
                 }
+                if (extensions.isNotEmpty()) {
+                    message = drainExtensions(result.reminder.id) ?:
+                        if (silent) R.string.shake_scheduled_quiet else R.string.shake_scheduled
+                }
             } catch (failure: Exception) {
+                extensions.clear()
+                message = if (reminderId != null) R.string.shake_extend_failed else R.string.shake_auto_save_failed
                 android.util.Log.w("ShakeRecording", "Could not create shake reminder; keeping inbox take", failure)
             } finally {
                 runCatching { if (saveWakeLock?.isHeld == true) saveWakeLock.release() }
@@ -440,6 +523,10 @@ class ShakeRecordingService : Service(), SensorEventListener {
         runCatching {
             getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(recordingFile != null))
         }
+        handler.removeCallbacks(refreshDue)
+        scheduledTime?.takeIf { it > System.currentTimeMillis() }?.let {
+            handler.postDelayed(refreshDue, (it - System.currentTimeMillis()).coerceAtLeast(1L))
+        }
     }
 
     private fun notification(recording: Boolean): Notification {
@@ -452,8 +539,8 @@ class ShakeRecordingService : Service(), SensorEventListener {
         val saved = state.value.message == R.string.shake_scheduled || state.value.message == R.string.shake_scheduled_quiet
         val detail = when {
             arming -> getString(R.string.shake_preparing)
-            saving -> getString(R.string.shake_saving)
-            recording -> getString(R.string.shake_recording_notification)
+            saving -> getString(if (reminderId != null) R.string.shake_updating_time else R.string.shake_saving)
+            recording -> getString(R.string.shake_recording_delay, engine.recordingDelayMinutes)
             state.value.statusText != null -> state.value.statusText!!
             saved && scheduledTime != null -> getString(R.string.shake_scheduled_status, formatTime(scheduledTime!!)) +
                 if (state.value.message == R.string.shake_scheduled_quiet) " " + getString(R.string.shake_quiet_notice) else ""
@@ -465,7 +552,7 @@ class ShakeRecordingService : Service(), SensorEventListener {
             .setContentTitle(getString(when {
                 arming -> R.string.shake_preparing
                 recording -> R.string.shake_recording
-                saving -> R.string.shake_saving
+                saving -> if (reminderId != null) R.string.shake_updating_time else R.string.shake_saving
                 pendingTake != null -> engine.mode.labelRes()
                 saved -> R.string.shake_reminder_scheduled
                 else -> R.string.shake_ready
@@ -484,19 +571,33 @@ class ShakeRecordingService : Service(), SensorEventListener {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+        // Standard Android notifications display at most three actions. Keep both increments
+        // beside Stop/Finish; the notification body opens controls with Stop listening.
+        val canExtend = !saving && takeToken != null && (recording || pendingTake != null ||
+            (reminderId != null && scheduledTime?.let { it > System.currentTimeMillis() } == true))
+        if (canExtend) {
+            builder.addAction(0, getString(R.string.shake_plus_five), extensionCommand(5))
+                .addAction(0, getString(R.string.shake_plus_thirty), extensionCommand(30))
+        }
         if (recording) {
             builder.setWhen(startedAt).setUsesChronometer(true)
                 .addAction(0, getString(R.string.shake_save), command(ACTION_SAVE, 1))
         }
         if (pendingTake != null) {
             builder.addAction(0, getString(R.string.shake_finish_time), command(ACTION_SAVE, 1))
-            if (engine.mode == ShakeMode.AFTER_RECORDING) {
-                builder.addAction(0, getString(R.string.shake_action_enter), command(ACTION_EDIT, 3))
-            }
         }
-        builder.addAction(0, getString(R.string.shake_disable), command(ACTION_DISABLE, 2))
+        if (!recording && pendingTake == null) {
+            builder.addAction(0, getString(R.string.shake_disable), command(ACTION_DISABLE, 2))
+        }
         return builder.build()
     }
+
+    private fun extensionCommand(minutes: Int): PendingIntent = PendingIntent.getService(
+        this, minutes, Intent(this, ShakeRecordingService::class.java).setAction(ACTION_EXTEND)
+            .setData(Uri.parse("speakalert://shake/$takeToken/$minutes"))
+            .putExtra(EXTRA_TAKE, takeToken).putExtra(EXTRA_MINUTES, minutes),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 
     private fun command(action: String, request: Int): PendingIntent = PendingIntent.getService(
         this, request, Intent(this, ShakeRecordingService::class.java).setAction(action),
@@ -542,6 +643,9 @@ class ShakeRecordingService : Service(), SensorEventListener {
         private const val ACTION_EDIT = "shake.EDIT"
         private const val ACTION_ADD = "shake.ADD"
         private const val ACTION_SWITCH = "shake.SWITCH"
+        private const val ACTION_EXTEND = "shake.EXTEND"
+        private const val EXTRA_TAKE = "shakeTake"
+        private const val EXTRA_MINUTES = "shakeMinutes"
         private const val MAX_RECORDING_MS = 5 * 60 * 1_000L
         private val mutableState = MutableStateFlow(ShakeRecordingState())
         val state = mutableState.asStateFlow()

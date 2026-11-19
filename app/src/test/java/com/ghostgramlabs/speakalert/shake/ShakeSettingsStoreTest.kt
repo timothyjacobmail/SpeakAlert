@@ -31,7 +31,7 @@ class ShakeSettingsStoreTest {
         val data = MemoryStore()
         val config = ShakeSettings(defaultMinutes = 15, minuteStep = 3, hourStep = 90,
             entryWindowSeconds = 20, editTimeoutSeconds = 25, sequenceGapMs = 2_000, cooldownMs = 900,
-            thresholdG = 3.2f, sounds = false, vibration = false,
+            thresholdG = 3.2f, sounds = false, vibration = false, waitAfterRecording = false,
             bindings = ShakeSettings.defaultBindings() + mapOf(
                 ShakeBinding(ShakeMode.MINUTES, 1) to ShakeAction.SUBTRACT_TIME,
                 ShakeBinding(ShakeMode.HOURS, 2) to ShakeAction.RESET_TIME,

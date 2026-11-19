@@ -17,6 +17,7 @@ data class ShakeSettings(
     val thresholdG: Float = 2.7f,
     val sounds: Boolean = true,
     val vibration: Boolean = true,
+    val waitAfterRecording: Boolean = true,
     val bindings: Map<ShakeBinding, ShakeAction> = defaultBindings()
 ) {
     fun action(mode: ShakeMode, count: Int): ShakeAction =
@@ -81,15 +82,33 @@ class ShakeActionEngine(val settings: ShakeSettings) {
     var triggerAt: Long? = null; private set
     var stoppedAt: Long = 0; private set
     var deadline: Long? = null; private set
+    var recordingDelayMinutes: Int = settings.defaultMinutes; private set
     val pending get() = mode in listOf(ShakeMode.AFTER_RECORDING, ShakeMode.MINUTES, ShakeMode.HOURS)
     val stepMinutes get() = if (mode == ShakeMode.HOURS) settings.hourStep else settings.minuteStep
 
-    fun recordingStarted() { mode = ShakeMode.RECORDING; triggerAt = null; deadline = null }
+    fun recordingStarted() {
+        mode = ShakeMode.RECORDING; triggerAt = null; deadline = null
+        recordingDelayMinutes = settings.defaultMinutes
+    }
     fun recordingStopped(wall: Long, elapsed: Long) {
         stoppedAt = wall
-        triggerAt = wall + settings.defaultMinutes * 60_000L
+        triggerAt = wall + recordingDelayMinutes * 60_000L
         mode = ShakeMode.AFTER_RECORDING
-        deadline = elapsed + settings.entryWindowSeconds * 1_000L
+        deadline = if (settings.waitAfterRecording) elapsed + settings.entryWindowSeconds * 1_000L else null
+    }
+
+    /** Fixed notification increments are independent of the configured shake step/mode. */
+    fun extend(minutes: Int, wall: Long, elapsed: Long): Boolean {
+        if (minutes != 5 && minutes != 30) return false
+        if (mode == ShakeMode.RECORDING) {
+            recordingDelayMinutes = (recordingDelayMinutes + minutes).coerceAtMost((MAX_DELAY_MS / 60_000L).toInt())
+        } else if (pending) {
+            triggerAt = ((triggerAt ?: wall) + minutes * 60_000L)
+                .coerceAtMost(wall + MAX_DELAY_MS).coerceAtLeast(wall + 60_000L)
+            if (settings.waitAfterRecording) deadline = elapsed +
+                (if (mode == ShakeMode.AFTER_RECORDING) settings.entryWindowSeconds else settings.editTimeoutSeconds) * 1_000L
+        } else return false
+        return true
     }
 
     fun expired(elapsed: Long): Boolean = deadline?.let { elapsed >= it } ?: false

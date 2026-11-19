@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="shake_title">Shake to record</string>
-    <string name="shake_description">Enable listening to record and adjust reminder times with the screen locked or off. One gesture is two firm back-and-forth movements. With the default assignments, one gesture starts recording and another stops it. Shake again shortly after stopping to edit the time. Recordings stop after 5 minutes.</string>
+    <string name="shake_description">Enable listening to record and adjust reminder times with the screen locked or off. Lift your hand, flick the phone sideways toward the ground across its width, lift it back gently, and repeat the flick in the same direction within 1.2 seconds. Hold it briefly still to finish one gesture. With the default assignments, one gesture starts recording and another stops it. Repeat shortly after stopping to edit the time. Recordings stop after 5 minutes.</string>
     <string name="shake_session_note">Sounds follow your notification volume and silent-mode settings. Listening uses battery and shows an ongoing notification. Enable it again after restarting the phone or if Android stops the app. Some phones need unrestricted battery access for reliable screen-off detection.</string>
     <string name="shake_enable">Enable listening</string>
     <string name="shake_disable">Stop listening</string>
@@ -28,7 +28,7 @@
     <string name="shake_delete_description">This recording has not been attached to a reminder. Deleting it cannot be undone.</string>
     <string name="shake_import_failed">This recording could not be opened. It may have been deleted or storage may be full.</string>
     <string name="shake_customize">Customize shake actions</string>
-    <string name="shake_custom_help">Assign single, double and triple gestures separately for each mode. A gesture is two firm movements; repeat the full gesture to make a double or triple. Wait for the grouping pause to finish before the action runs. Four or more gestures in one group are ignored. During time editing, the short cue means Minutes mode and the double cue means Hours mode.</string>
+    <string name="shake_custom_help">Assign single, double and triple gestures separately for each mode. One gesture is two width-wise flicks in the same direction, lifting back gently between them, then holding briefly still. Repeat the full gesture after the minimum pause to make a double or triple. Wait for the grouping pause to finish before the action runs. Four or more gestures in one group are ignored. During time editing, the short cue means Minutes mode and the double cue means Hours mode.</string>
     <string name="shake_stop_to_configure">Stop listening before saving new settings. Your current recording or time edit will be saved first.</string>
     <string name="shake_time_settings">Time and editing windows</string>
     <string name="shake_default_delay">Default reminder delay (minutes)</string>
@@ -62,7 +62,7 @@
     <string name="shake_threshold">Shake force (g)</string>
     <string name="shake_range_gap">600–2500 ms. Must be at least 400 ms longer than the minimum pause. A longer grouping pause makes doubles and triples easier but delays each action.</string>
     <string name="shake_range_cooldown">200–1200 ms. Short pauses make repeated gestures easier; longer pauses reduce accidental repeats.</string>
-    <string name="shake_range_threshold">1.8–4.5 g. Lower values need less force and may trigger accidentally.</string>
+    <string name="shake_range_threshold">1.8–4.5 g across the phone width, excluding gravity. Lower values need less force and may trigger accidentally. Finish each pair of flicks with a brief still pause.</string>
     <string name="shake_sound_setting">Recording and time-edit sounds</string>
     <string name="shake_vibration_setting">Vibration feedback</string>
     <string name="shake_invalid_settings">Check the number ranges and grouping pause before saving.</string>
@@ -88,4 +88,13 @@
     <string name="shake_reminder_scheduled">Reminder scheduled · listening</string>
     <string name="shake_scheduled_status">Due: %1$s. Tap to view the reminder. Listening for your next recording gesture.</string>
     <string name="shake_quiet_notice">Very little sound was detected; preview the recording.</string>
+    <string name="shake_wait_setting">Wait for shakes after recording</string>
+    <string name="shake_wait_help">On: wait for your time-edit gesture after stopping. Off: schedule immediately when recording stops. Notification buttons can still add 5 or 30 minutes before the reminder is due.</string>
+    <string name="shake_plus_five">+5 min</string>
+    <string name="shake_plus_thirty">+30 min</string>
+    <string name="shake_extended_by">Added %1$d minutes to the reminder time.</string>
+    <string name="shake_recording_delay">Reminder delay: %1$d minutes after recording stops. Use +5 or +30 to extend the reminder time, or Stop and save. Tap this notification for all controls.</string>
+    <string name="shake_updating_time">Updating reminder time…</string>
+    <string name="shake_extend_unavailable">This reminder can no longer be extended here. It may be due, completed, deleted or changed. Open it to check its time.</string>
+    <string name="shake_extend_failed">Could not update the reminder time. Open the reminder to check and save its time.</string>
 </resources>

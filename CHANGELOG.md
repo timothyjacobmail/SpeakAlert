@@ -15,8 +15,12 @@ User-facing changes to SpeakAlert, newest first. Version numbers match the Googl
   by a newer reminder.
 - Add quick-action recording that recognizes vivo shortcut launches after unlocking, with
   notification Stop controls and voice reminders due 10 minutes after recording stops.
-- Add a Record reminder home-screen widget: tap to start recording immediately, stop, then
-  choose 5, 10, 15, or 30 minutes, or 1 hour to save the reminder.
+- Fix missed shake gestures when the return movement is quick or strong, or a sideways
+  flick starts slightly off-axis. Keep the two-flick and still-finish safeguards.
+- Shake detection now requires two width-wise flicks in the same direction, a gentler lift
+  between them and a brief still finish, to reduce accidental triggers from ordinary movement.
+- Add a toggle to skip the shake-edit waiting window after recording, and silent notification
+  buttons to add 5 or 30 minutes during capture, time editing or before the saved reminder is due.
 - Shake listening now updates one explicitly silent status notification with gesture recognition,
   the current mode/action, recording progress, saving status and the scheduled due time.
 - Customizable single/double/triple shake actions for recording and time editing, with separate

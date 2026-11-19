@@ -16,7 +16,9 @@ sensor delivery or microphone audio quality.
    listening must stay off and explain how to grant access. Repeat with notifications denied.
 2. Grant both permissions and enable listening. Verify the ongoing notification and idle
    status. A single bump or ordinary walking should not start recording.
-3. Make one gesture (two firm movements), then pause for 1.4 seconds with default settings:
+3. Make one gesture: lift your hand, flick width-wise toward the ground, lift back gently,
+   and repeat in the same direction within 1.2 seconds. Hold briefly still, then wait for the
+   1.4-second grouping pause with default settings:
    verify the short beep and vibration, recording status and notification timer. Two or three
    gestures in one group must not first run the single action. Check the recent action log.
 4. Speak, then shake twice again. Verify the different stop sound and longer vibration. Verify
@@ -70,9 +72,39 @@ sensor delivery or microphone audio quality.
     Disable shake sounds/vibration to isolate notification alerts, then verify updates are
     silent on both a fresh install and an existing notification channel. Reminder alarms must
     continue to use their own configured playback and notification behavior.
+18. Turn off Wait for shakes after recording, save settings and restart listening. Stop a take:
+    it must schedule immediately without an entry/edit window. Re-enable the toggle and repeat;
+    the existing window must return. Reopen settings and rotate to check persistence.
+19. During recording tap +5 and +30: the notification should show a 40-minute reminder delay
+    with default settings, while recording continues. Stop: due time must be 40 minutes after
+    stop. With waiting on, use both buttons during the edit window and confirm the mode stays
+    unchanged and its timeout restarts. Buttons must stay silent.
+20. Extend a scheduled take using +5/+30 several times quickly, including a tap racing the
+    initial save. Verify the same reminder ID/audio and one final alarm, with all accepted
+    increments added. Finish/Stop listening during an update must wait for the save. Open or
+    dismiss an older notification action after starting a new take: it must not change it.
+21. Complete/delete/change the saved reminder from the app, then try its old extension action:
+    it must not restore the row or overwrite concurrent changes. Let a reminder become due:
+    extension actions should disappear and old taps must be rejected. Verify its previous
+    alarm time does not fire after an extension. Check lock-screen actions on a physical phone.
+
+22. Check the width-wise flick pattern with either hand, screen on/off and different grips.
+    Two same-direction flicks with a gentle lift and still finish should count once. A single
+    flick and its braking movement, lengthwise shakes, facewise shakes, and opposite-direction
+    flicks must not count. Try walking with the phone in front/back trouser pockets, jogging
+    with it in hand, and stopping after a run: log any unwanted action. Then deliberately
+    perform the gesture while standing and while running, holding the hand briefly still at
+    the end. Test single/double/triple assignments with the existing grouping pause and
+    cooldown; increase the grouping pause if the next full gesture does not fit. These are
+    physical validation checks, not guarantees supplied by synthetic sensor tests.
 
 Record the phone model, Android version, battery mode and actual results. A successful build
 or unit test is not evidence that physical shake capture works on the lock screen.
+
+For missed-shake regression checks, repeat step 22 with a quick return immediately after
+the first flick, a stronger return, and a flick that starts slightly off-axis. Each pair
+of same-direction width flicks should count once after the still finish. A single flick
+and its braking impulse must still be ignored. Repeat with both screen on and locked.
 
 ## Initial implementation verification, 2026-10-24
 
@@ -110,3 +142,32 @@ or unit test is not evidence that physical shake capture works on the lock scree
 - `:app:testDebugUnitTest :app:assembleDebug` completed successfully: 270 tests, no failures
   or errors, after adding explicit silent channel/builder settings and live status text.
 - Device verification of notification silence and state changes remains covered by step 17.
+
+## Wait toggle and notification extensions verification, 2026-10-24
+
+- `:app:testDebugUnitTest :app:assembleDebug` completed successfully: 282 tests, no failures
+  or errors. Tests cover the wait toggle, stop-relative additions, fixed increments in both
+  modes, repeated updates to one reminder, concurrent-change rejection, failure handling,
+  deadline limits and rejection of superseded one-time alarms.
+- The new lock-screen buttons and toggle still require physical-device checks in steps 18–21.
+
+## Width-wise flick detection verification, 2026-10-25
+
+- `:app:testDebugUnitTest :app:assembleDebug --offline` completed successfully: 288 tests,
+  no failures or errors, using the process-local JDK workarounds above.
+- Twelve detector tests use continuous synthetic sensor traces to cover either hand,
+  different gravity orientations, gentle returns, braking, wrong-axis bumps, continuous
+  movement, expired gestures, cooldown, reset, sensor gaps and invalid samples.
+- The debug APK was built but not installed. Actual flicks, pocket movement, running and
+  screen-off behavior still need the physical checks in step 22; synthetic traces do not
+  establish a real-world false-trigger rate.
+
+## Missed shake recognition fix, 2026-10-26
+
+- Reproduced three failures in the previous detector using quick returns, strong returns,
+  and off-axis leading samples. All three pass with the fix. A fourth test confirms a
+  same-direction rebound within 240ms still cannot complete a gesture.
+- `:app:testDebugUnitTest :app:assembleDebug --offline` completed successfully: 292 tests,
+  no failures or errors, using the process-local JDK workarounds above.
+- The debug APK is built but not installed. Physical confirmation with screen on and
+  locked remains necessary; force settings and the still-finish requirement are unchanged.

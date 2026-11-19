@@ -10,7 +10,8 @@
 </p>
 
 <p align="center">
- 
+  <a href="https://play.google.com/store/apps/details?id=com.ghostgramlabs.speakalert">Google Play</a> ·
+  <a href="https://ghostgramlabs.com/SpeakAlert/">Website</a> ·
   <a href="https://ghostgramlabs.com/SpeakAlert/privacy.html">Privacy policy</a> ·
   <a href="LICENSE">Apache 2.0</a>
 </p>
@@ -65,7 +66,9 @@ hear it even when the phone is in your pocket or across the room.
 
 Open **Settings > Shake to record > Open recordings and controls**, grant microphone and
 notification access, then tap **Enable listening** before locking the phone. One gesture is
-two firm movements within 1.2 seconds. Repeat the complete gesture to make a double or triple;
+two width-wise flicks toward the ground in the same direction within 1.2 seconds, lifting
+back gently between flicks, then holding briefly still. Either hand works. Repeat the complete
+gesture after the minimum pause to make a double or triple;
 an action runs after the grouping pause (1.4 seconds by default), so a double does not also
 run the single action. Four or more gestures in one group are ignored.
 
@@ -83,6 +86,17 @@ The initial time is five minutes after recording stops. Switching modes does not
 Pause for 10 seconds to finish automatically, or use **Finish and schedule reminder**.
 The completed audio is saved immediately; the reminder is inserted and scheduled once the
 entry/edit window ends. **Stop listening** also finishes the pending reminder immediately.
+Turn off **Wait for shakes after recording** in **Customize shake actions** to schedule as soon
+as recording stops. The toggle defaults to on, preserving the existing editing window.
+
+The silent notification has **+5 min** and **+30 min** buttons. During recording they extend
+the reminder delay measured from the moment recording stops (not the recording duration).
+During time editing they extend the selected due time without changing the gesture mode.
+After scheduling, they extend the same reminder and replace its alarm, while listening stays
+active and before that reminder is due. Repeated taps accumulate; completed, delivered,
+deleted or concurrently changed reminders are not overwritten. The recording notification
+keeps **Stop and save** as its third action; the pending notification keeps **Finish**.
+Tap the notification body to open the remaining controls, including Stop listening.
 The screen and ongoing notification show the mode, step and due time during editing.
 The notification updates silently as gestures are recognized, recording starts/stops, modes
 change and the reminder is saved. It shows the last action and final due time without making

@@ -118,6 +118,8 @@
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
             android:taskAffinity="${applicationId}.quickrecord"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:theme="@style/Theme.SpeakAlert" />
 
         <service
@@ -206,6 +208,9 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/record_reminder_widget_info" />
+            <meta-data
+                android:name="tk.zwander.lockscreenwidgets.KEEP_KEYGUARD"
+                android:value="true" />
         </receiver>
 
         <provider

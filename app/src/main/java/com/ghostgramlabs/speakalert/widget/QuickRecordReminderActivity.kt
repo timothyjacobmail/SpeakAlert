@@ -1,6 +1,7 @@
 package com.ghostgramlabs.speakalert.widget
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -28,26 +29,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.withResumed
+import androidx.lifecycle.Lifecycle
 import com.ghostgramlabs.speakalert.R
 import com.ghostgramlabs.speakalert.VoiceReminderApp
+import com.ghostgramlabs.speakalert.quickrecord.configureRecordingWindow
 import com.ghostgramlabs.speakalert.ui.AppViewModelProvider
 import com.ghostgramlabs.speakalert.ui.addedit.AddEditViewModel
 import com.ghostgramlabs.speakalert.ui.addedit.RecordingIssue
 import com.ghostgramlabs.speakalert.ui.theme.VoiceReminderTheme
 import com.ghostgramlabs.speakalert.util.AppLocale
 import com.ghostgramlabs.speakalert.util.ThemePrefs
-import kotlinx.coroutines.launch
 
 /** A short, visible capture flow. Leaving the activity always releases the microphone. */
 class QuickRecordReminderActivity : ComponentActivity() {
     private val editor: AddEditViewModel by viewModels { AppViewModelProvider.Factory }
     private var autoStartPending = true
+    private val keyguard by lazy { getSystemService(KeyguardManager::class.java) }
     private var micGranted by mutableStateOf(false)
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         micGranted = granted
-        if (granted) lifecycleScope.launch { lifecycle.withResumed { startRecording() } }
+        autoStartPending = granted
+        handleInitialTap()
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -57,6 +59,7 @@ class QuickRecordReminderActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemePrefs.applyWindowTheme(this)
         super.onCreate(savedInstanceState)
+        configureRecordingWindow(showWhenLocked = true, wakeScreen = true)
         // A retained ViewModel owns the take across rotation. After process death let the user
         // explicitly start a new take instead of silently restarting a lost recording.
         autoStartPending = savedInstanceState == null
@@ -74,9 +77,32 @@ class QuickRecordReminderActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         micGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (autoStartPending) {
-            autoStartPending = false
-            if (micGranted) startRecording() else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        handleInitialTap()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) handleInitialTap()
+    }
+
+    private fun handleInitialTap() {
+        if (!autoStartPending || !hasWindowFocus() || !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
+        autoStartPending = false
+        if (micGranted) startRecording()
+        else if (!keyguard.isKeyguardLocked) micPermission.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    private fun requestMicrophone() {
+        if (keyguard.isKeyguardLocked) {
+            keyguard.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissSucceeded() { micPermission.launch(Manifest.permission.RECORD_AUDIO) }
+            })
+        } else {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
@@ -127,7 +153,7 @@ class QuickRecordReminderActivity : ComponentActivity() {
                     }
                     !micGranted -> {
                         Text(stringResource(R.string.quick_record_permission))
-                        Button(onClick = { micPermission.launch(Manifest.permission.RECORD_AUDIO) }) {
+                        Button(onClick = ::requestMicrophone) {
                             Text(stringResource(R.string.quick_record_permission_button))
                         }
                         TextButton(onClick = {

@@ -30,3 +30,13 @@ If a launcher caches the old minimum size after an app update, remove and re-add
 
 Automated coverage in `AddEditViewModelTest` checks all five exact delays and durable audio,
 duplicate-tap protection, and rejecting empty recordings.
+
+## Widgets Anywhere lock-screen drawer
+
+With both apps updated, place **Record reminder** in the drawer. Grant SpeakAlert microphone
+access once while unlocked. Lock the phone, open the drawer, and tap the widget. The drawer
+should close, the elapsed timer should start, and **Stop recording** should be available
+without entering a PIN. Stop, choose a delay, and check that the phone returns to the lock
+screen. After unlocking, verify the new reminder and play the take. Repeat with **Cancel**
+and verify no reminder is added. Check another widget that opens a private app still follows
+the drawer's configured unlock behavior.
